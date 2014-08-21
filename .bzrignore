@@ -1,5 +1,5 @@
 .bam
-helloworld.exe.manifest
-helloworld.exe
-SDL2.dll
-main.obj
+*.exe.manifest
+*.exe
+*.dll
+*.obj

@@ -38,6 +38,8 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
+      SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
+      SDL_RenderClear( rend );
       
       SDL_RenderPresent(rend);
    }
