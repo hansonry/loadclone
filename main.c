@@ -8,6 +8,7 @@ int main(int args, char * argc[])
    SDL_Window  * window;
    SDL_Renderer * rend;   
    SDL_Event event;
+   SDL_Surface * palet;
    int done;
    int prevTicks, diffTicks, nowTicks;
    float seconds;
@@ -22,7 +23,8 @@ int main(int args, char * argc[])
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
-   
+   palet = IMG_Load("load.png");
+
    prevTicks = SDL_GetTicks();
    
    done = 0;

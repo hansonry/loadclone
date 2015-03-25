@@ -12,8 +12,9 @@ end
 
 
 
-settings.link.libs:Add("SDL2");
 
+settings.link.libs:Add("SDL2");
+settings.link.libs:Add("SDL2_image");
 
 source = Collect("*.c");
 
