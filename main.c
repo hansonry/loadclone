@@ -12,7 +12,11 @@
 #define IMGID_GUY          0x0101
 #define IMGID_BAR          0x0102
 #define IMGID_DOORCLOSE    0x0200
-#define IMGID_DOOROPEN     0x0201    
+#define IMGID_DOOROPEN     0x0201
+
+#define MOVE_TIME          0.5f
+#define MOTION_STATE_NOT_MOVING  0
+#define MOTION_STATE_MOVEING     1
 
 typedef enum player_input_e player_input_t;
 enum player_input_e
@@ -31,6 +35,15 @@ struct pos_s
    int y;
 };
 
+typedef struct player_data_s player_data_t;
+struct player_data_s
+{
+   int input_flags[e_pi_last];
+   pos_t grid_p;
+   int motion_state;
+   float move_timer;
+};
+
 static void CheckForExit(const SDL_Event *event, int * done);
 
 static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
@@ -38,6 +51,8 @@ static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
 static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, int y);
 
 static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
+
+static void handle_update(float seconds, player_data_t * player1_data);
 
 int main(int args, char * argc[])
 {
@@ -49,22 +64,19 @@ int main(int args, char * argc[])
    int prevTicks, diffTicks, nowTicks;
    float seconds;
 
-   int player_input_flags[e_pi_last];
    int i;
    
 
  
-   pos_t player_grid_p;  
-
+   player_data_t player1_data;
 
    for(i = 0; i < e_pi_last; i++)
    {
-      player_input_flags[i] = 0;
+      player1_data.input_flags[i] = 0;
    }
-
-
-   player_grid_p.x = 0;
-   player_grid_p.y = 0;
+   player1_data.grid_p.x = 0;
+   player1_data.grid_p.y = 0;
+   player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -83,7 +95,7 @@ int main(int args, char * argc[])
    {
       while(SDL_PollEvent(&event))
       {
-         handle_input(&event, &done, player_input_flags);
+         handle_input(&event, &done, player1_data.input_flags);
       }
       
       nowTicks = SDL_GetTicks();
@@ -91,30 +103,13 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      if(player_input_flags[e_pi_move_up] == 1)
-      {
-         player_grid_p.y --;
-      }
-      if(player_input_flags[e_pi_move_down] == 1)
-      {
-         player_grid_p.y ++;
-      }
-      if(player_input_flags[e_pi_move_left] == 1)
-      {
-         player_grid_p.x --;
-      }
-      if(player_input_flags[e_pi_move_right] == 1)
-      {
-         player_grid_p.x ++;
-      }
-
-
+      handle_update(seconds, &player1_data);
       
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
      
-      draw_at(rend, t_palet, IMGID_GUY, player_grid_p.x * TILE_WIDTH, 
-                                        player_grid_p.y * TILE_HEIGHT); 
+      draw_at(rend, t_palet, IMGID_GUY, player1_data.grid_p.x * TILE_WIDTH, 
+                                        player1_data.grid_p.y * TILE_HEIGHT); 
       SDL_RenderPresent(rend);
    }
    
@@ -223,4 +218,48 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
    SDL_RenderCopy(rend, text, &r_src, &r_dest);
 }
 
+static void handle_update(float seconds, player_data_t * player1_data)
+{
+   int motion_requested;
+   if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
+   {
+      motion_requested = 0;
+      if(player1_data->input_flags[e_pi_move_up]    == 1)
+      {
+         player1_data->grid_p.y --;
+         motion_requested = 1;
+      }
+      if(player1_data->input_flags[e_pi_move_down]  == 1)
+      {
+         player1_data->grid_p.y ++;
+         motion_requested = 1;
+      }
+      if(player1_data->input_flags[e_pi_move_left]  == 1)
+      {
+         player1_data->grid_p.x --;
+         motion_requested = 1;
+      }
+      if(player1_data->input_flags[e_pi_move_right] == 1)
+      {
+         player1_data->grid_p.x ++;
+         motion_requested = 1;
+      }
+
+      if(motion_requested == 1)
+      {
+         player1_data->motion_state = MOTION_STATE_MOVEING;
+         player1_data->move_timer = 0;
+      }
+   }
+   else if(player1_data->motion_state == MOTION_STATE_MOVEING)
+   {
+      player1_data->move_timer += seconds;
+      if(player1_data->move_timer >= MOVE_TIME)
+      {
+         player1_data->motion_state = MOTION_STATE_NOT_MOVING;
+      }
+   }
+
+
+}
 
