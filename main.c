@@ -40,6 +40,7 @@ struct player_data_s
 {
    int input_flags[e_pi_last];
    pos_t grid_p;
+   pos_t next_grid_p;
    int motion_state;
    float move_timer;
 };
@@ -53,6 +54,8 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
 
 static void handle_update(float seconds, player_data_t * player1_data);
+
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_data_t * player1_data);
 
 int main(int args, char * argc[])
 {
@@ -107,9 +110,8 @@ int main(int args, char * argc[])
       
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
-     
-      draw_at(rend, t_palet, IMGID_GUY, player1_data.grid_p.x * TILE_WIDTH, 
-                                        player1_data.grid_p.y * TILE_HEIGHT); 
+      
+      handle_render(rend, t_palet, &player1_data);
       SDL_RenderPresent(rend);
    }
    
@@ -220,32 +222,29 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 
 static void handle_update(float seconds, player_data_t * player1_data)
 {
-   int motion_requested;
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
-      motion_requested = 0;
+      player1_data->next_grid_p.x = player1_data->grid_p.x;
+      player1_data->next_grid_p.y = player1_data->grid_p.y;
       if(player1_data->input_flags[e_pi_move_up]    == 1)
       {
-         player1_data->grid_p.y --;
-         motion_requested = 1;
+         player1_data->next_grid_p.y --;
       }
       if(player1_data->input_flags[e_pi_move_down]  == 1)
       {
-         player1_data->grid_p.y ++;
-         motion_requested = 1;
+         player1_data->next_grid_p.y ++;
       }
       if(player1_data->input_flags[e_pi_move_left]  == 1)
       {
-         player1_data->grid_p.x --;
-         motion_requested = 1;
+         player1_data->next_grid_p.x --;
       }
       if(player1_data->input_flags[e_pi_move_right] == 1)
       {
-         player1_data->grid_p.x ++;
-         motion_requested = 1;
+         player1_data->next_grid_p.x ++;
       }
 
-      if(motion_requested == 1)
+      if(player1_data->next_grid_p.x != player1_data->grid_p.x ||
+         player1_data->next_grid_p.y != player1_data->grid_p.y)
       {
          player1_data->motion_state = MOTION_STATE_MOVEING;
          player1_data->move_timer = 0;
@@ -257,9 +256,42 @@ static void handle_update(float seconds, player_data_t * player1_data)
       if(player1_data->move_timer >= MOVE_TIME)
       {
          player1_data->motion_state = MOTION_STATE_NOT_MOVING;
+         player1_data->grid_p.x = player1_data->next_grid_p.x;
+         player1_data->grid_p.y = player1_data->next_grid_p.y;
       }
+   }
+}
+
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_data_t * player1_data)
+{
+   pos_t draw_loc;
+   pos_t diff;
+   float move_percent;
+
+   if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
+   {
+      draw_loc.x = player1_data->grid_p.x * TILE_WIDTH;
+      draw_loc.y = player1_data->grid_p.y * TILE_HEIGHT;
+   }
+   else if(player1_data->motion_state == MOTION_STATE_MOVEING)
+   {
+      diff.x = (player1_data->next_grid_p.x - player1_data->grid_p.x) * TILE_WIDTH;
+      diff.y = (player1_data->next_grid_p.y - player1_data->grid_p.y) * TILE_HEIGHT;
+      move_percent = player1_data->move_timer / MOVE_TIME;
+      draw_loc.x = (player1_data->grid_p.x * TILE_WIDTH) + (int)(diff.x * move_percent);
+      draw_loc.y = (player1_data->grid_p.y * TILE_HEIGHT) + (int)(diff.y * move_percent);
+
+   }
+   else
+   {
+      draw_loc.x = 0;
+      draw_loc.y = 0;
    }
 
 
+   draw_at(rend, t_palet, IMGID_GUY, draw_loc.x, 
+                                     draw_loc.y); 
+ 
 }
+
 
