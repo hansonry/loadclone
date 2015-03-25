@@ -15,7 +15,7 @@ int main(int args, char * argc[])
    
    
    SDL_Init(SDL_INIT_EVERYTHING);   
-   window = SDL_CreateWindow("Hello World!", 
+   window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
                              800, 600, SDL_WINDOW_SHOWN);

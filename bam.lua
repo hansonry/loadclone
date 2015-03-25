@@ -18,4 +18,4 @@ settings.link.libs:Add("SDL2");
 source = Collect("*.c");
 
 objects = Compile(settings, source)
-exe = Link(settings, "helloworld", objects)
+exe = Link(settings, "loadclone", objects)
