@@ -14,11 +14,30 @@
 #define IMGID_DOORCLOSE    0x0200
 #define IMGID_DOOROPEN     0x0201    
 
+typedef enum player_input_e player_input_t;
+enum player_input_e
+{
+   e_pi_move_up,
+   e_pi_move_down,
+   e_pi_move_left,
+   e_pi_move_right,
+   e_pi_last
+};
+
+typedef struct pos_s pos_t;
+struct pos_s
+{
+   int x;
+   int y;
+};
+
 static void CheckForExit(const SDL_Event *event, int * done);
 
 static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
 
 static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, int y);
+
+static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
 
 int main(int args, char * argc[])
 {
@@ -29,8 +48,23 @@ int main(int args, char * argc[])
    int done;
    int prevTicks, diffTicks, nowTicks;
    float seconds;
+
+   int player_input_flags[e_pi_last];
+   int i;
    
-   
+
+ 
+   pos_t player_grid_p;  
+
+
+   for(i = 0; i < e_pi_last; i++)
+   {
+      player_input_flags[i] = 0;
+   }
+
+
+   player_grid_p.x = 0;
+   player_grid_p.y = 0;
    
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -49,7 +83,7 @@ int main(int args, char * argc[])
    {
       while(SDL_PollEvent(&event))
       {
-         CheckForExit(&event, &done);
+         handle_input(&event, &done, player_input_flags);
       }
       
       nowTicks = SDL_GetTicks();
@@ -57,10 +91,30 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
+      if(player_input_flags[e_pi_move_up] == 1)
+      {
+         player_grid_p.y --;
+      }
+      if(player_input_flags[e_pi_move_down] == 1)
+      {
+         player_grid_p.y ++;
+      }
+      if(player_input_flags[e_pi_move_left] == 1)
+      {
+         player_grid_p.x --;
+      }
+      if(player_input_flags[e_pi_move_right] == 1)
+      {
+         player_grid_p.x ++;
+      }
+
+
+      
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
      
-      draw_at(rend, t_palet, IMGID_GUY, 0, 0); 
+      draw_at(rend, t_palet, IMGID_GUY, player_grid_p.x * TILE_WIDTH, 
+                                        player_grid_p.y * TILE_HEIGHT); 
       SDL_RenderPresent(rend);
    }
    
@@ -89,6 +143,41 @@ static void CheckForExit(const SDL_Event *event, int * done)
       {
          (*done) = 1;
       }
+   }
+
+}
+
+
+static void handle_input(const SDL_Event * event, int * done, int * player_input_flags)
+{
+   player_input_t key;
+   CheckForExit(event, done);
+
+   if(event->key.keysym.sym == SDLK_KP_8)
+   {
+      key = e_pi_move_up;
+   }
+   else if(event->key.keysym.sym == SDLK_KP_5)
+   {
+      key = e_pi_move_down;
+   }
+   else if(event->key.keysym.sym == SDLK_KP_4)
+   {
+      key = e_pi_move_left;
+   }
+   else if(event->key.keysym.sym == SDLK_KP_6)
+   {
+      key = e_pi_move_right;
+   }
+   else
+   {
+      key = e_pi_last;
+   }
+
+   if(key != e_pi_last)
+   {
+      if(event->type == SDL_KEYDOWN) player_input_flags[key] = 1;
+      if(event->type == SDL_KEYUP)   player_input_flags[key] = 0;
    }
 
 }
