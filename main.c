@@ -63,6 +63,8 @@ static void TerrainMap_Destroy(TerrainMap_T * map);
 
 static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet); 
 
+static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
+
 static void CheckForExit(const SDL_Event *event, int * done);
 
 static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
@@ -71,7 +73,7 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 
 static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
 
-static void handle_update(float seconds, player_data_t * player1_data);
+static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * player1_data);
 
 static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap_T * tmap, player_data_t * player1_data);
 
@@ -106,6 +108,8 @@ int main(int args, char * argc[])
    {
       tmap.data[i + 90] = TMAP_TILE_DIRT;
    }
+   tmap.data[80] = TMAP_TILE_DIRT;
+   tmap.data[89] = TMAP_TILE_DIRT;
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -132,7 +136,7 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &player1_data);
+      handle_update(seconds, &tmap, &player1_data);
       
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
@@ -246,31 +250,46 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
    SDL_RenderCopy(rend, text, &r_src, &r_dest);
 }
 
-static void handle_update(float seconds, player_data_t * player1_data)
+static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * player1_data)
 {
+   pos_t desired_p;
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
       player1_data->next_grid_p.x = player1_data->grid_p.x;
       player1_data->next_grid_p.y = player1_data->grid_p.y;
+
+      desired_p.x = player1_data->grid_p.x;
+      desired_p.y = player1_data->grid_p.y;
+
       if(player1_data->input_flags[e_pi_move_up]    == 1)
       {
-         player1_data->next_grid_p.y --;
+         desired_p.y --;
       }
       if(player1_data->input_flags[e_pi_move_down]  == 1)
       {
-         player1_data->next_grid_p.y ++;
+         desired_p.y ++;
       }
       if(player1_data->input_flags[e_pi_move_left]  == 1)
       {
-         player1_data->next_grid_p.x --;
+         desired_p.x --;
       }
       if(player1_data->input_flags[e_pi_move_right] == 1)
       {
-         player1_data->next_grid_p.x ++;
+         desired_p.x ++;
+      }
+
+      if(TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1) == TMAP_TILE_AIR)
+      {
+         player1_data->next_grid_p.y ++;
+      }
+      else if(TerrainMap_GetTile(tmap, desired_p.x, desired_p.y) != TMAP_TILE_DIRT)
+      {
+         player1_data->next_grid_p.x = desired_p.x;
+         player1_data->next_grid_p.y = desired_p.y;
       }
 
       if(player1_data->next_grid_p.x != player1_data->grid_p.x ||
-         player1_data->next_grid_p.y != player1_data->grid_p.y)
+            player1_data->next_grid_p.y != player1_data->grid_p.y)
       {
          player1_data->motion_state = MOTION_STATE_MOVEING;
          player1_data->move_timer = 0;
@@ -379,6 +398,23 @@ static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Textu
          c.y += TILE_HEIGHT;
       }
    }
+}
+
+static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
+{
+   int index;
+   int result;
+   if(x >= 0 && x < map->width && y >= 0 && y < map->height)
+   {
+      index = x + (map->width * y);
+      result = map->data[index];
+   }
+   else
+   {
+      printf("Error: (%i, %i) is Out of Map Range\n", x, y);
+      result = TMAP_TILE_AIR;
+   }
+   return result;
 }
 
 // E TerrainMap
