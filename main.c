@@ -18,6 +18,10 @@
 #define MOTION_STATE_NOT_MOVING  0
 #define MOTION_STATE_MOVEING     1
 
+
+#define TMAP_TILE_AIR  0
+#define TMAP_TILE_DIRT 1
+
 typedef enum player_input_e player_input_t;
 enum player_input_e
 {
@@ -45,6 +49,20 @@ struct player_data_s
    float move_timer;
 };
 
+typedef struct TerrainMap_S TerrainMap_T;
+struct TerrainMap_S
+{
+   int width;
+   int height;
+   int * data;
+};
+
+static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
+
+static void TerrainMap_Destroy(TerrainMap_T * map);
+
+static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet); 
+
 static void CheckForExit(const SDL_Event *event, int * done);
 
 static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
@@ -55,7 +73,7 @@ static void handle_input(const SDL_Event * event, int * done, int * player_input
 
 static void handle_update(float seconds, player_data_t * player1_data);
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_data_t * player1_data);
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap_T * tmap, player_data_t * player1_data);
 
 int main(int args, char * argc[])
 {
@@ -72,6 +90,7 @@ int main(int args, char * argc[])
 
  
    player_data_t player1_data;
+   TerrainMap_T tmap;
 
    for(i = 0; i < e_pi_last; i++)
    {
@@ -81,6 +100,13 @@ int main(int args, char * argc[])
    player1_data.grid_p.y = 0;
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
+   TerrainMap_Init(&tmap, 10, 10);
+
+   for(i = 0; i < 10; i++)
+   {
+      tmap.data[i + 90] = TMAP_TILE_DIRT;
+   }
+
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
@@ -111,12 +137,12 @@ int main(int args, char * argc[])
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
       
-      handle_render(rend, t_palet, &player1_data);
+      handle_render(rend, t_palet, &tmap, &player1_data);
       SDL_RenderPresent(rend);
    }
    
    
-   
+   TerrainMap_Destroy(&tmap); 
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
@@ -262,12 +288,13 @@ static void handle_update(float seconds, player_data_t * player1_data)
    }
 }
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_data_t * player1_data)
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap_T * tmap, player_data_t * player1_data)
 {
    pos_t draw_loc;
    pos_t diff;
    float move_percent;
 
+   TerrainMap_Render(tmap, rend, t_palet);
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
       draw_loc.x = player1_data->grid_p.x * TILE_WIDTH;
@@ -278,8 +305,10 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_dat
       diff.x = (player1_data->next_grid_p.x - player1_data->grid_p.x) * TILE_WIDTH;
       diff.y = (player1_data->next_grid_p.y - player1_data->grid_p.y) * TILE_HEIGHT;
       move_percent = player1_data->move_timer / MOVE_TIME;
-      draw_loc.x = (player1_data->grid_p.x * TILE_WIDTH) + (int)(diff.x * move_percent);
-      draw_loc.y = (player1_data->grid_p.y * TILE_HEIGHT) + (int)(diff.y * move_percent);
+      draw_loc.x = (player1_data->grid_p.x * TILE_WIDTH) + 
+                   (int)(diff.x * move_percent);
+      draw_loc.y = (player1_data->grid_p.y * TILE_HEIGHT) + 
+                   (int)(diff.y * move_percent);
 
    }
    else
@@ -293,5 +322,65 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, player_dat
                                      draw_loc.y); 
  
 }
+
+// S TerrainMap
+
+
+static void TerrainMap_Init(TerrainMap_T * map, int width, int height)
+{
+   size_t i;
+   size_t size;
+   map->width  = width; 
+   map->height = height;
+   size        = width * height;
+   map->data   = malloc(sizeof(int) * size);
+   for(i = 0; i < size; i ++)
+   {
+      map->data[i] = TMAP_TILE_AIR;
+   }
+}
+
+static void TerrainMap_Destroy(TerrainMap_T * map)
+{
+   free(map->data);
+   map->data = NULL;
+}
+
+static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet)
+{
+   int index;
+   int size;
+   int tile_rend;
+   pos_t p, c;
+
+   p.x = 0;
+   p.y = 0;
+   index = 0;
+   c.x = 0;
+   c.y = 0; 
+   while(p.y < map->height)
+   {
+
+      switch(map->data[index])
+      {
+         case TMAP_TILE_DIRT:
+         draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
+         break;
+      }
+
+      index ++;
+      p.x ++;
+      c.x += TILE_WIDTH;
+      if(p.x >= map->width)
+      {
+         p.x = 0;
+         c.x = 0;
+         p.y ++;
+         c.y += TILE_HEIGHT;
+      }
+   }
+}
+
+// E TerrainMap
 
 
