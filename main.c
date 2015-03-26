@@ -108,19 +108,8 @@ int main(int args, char * argc[])
    player1_data.grid_p.y = 0;
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
-   //TerrainMap_Init(&tmap, 10, 10);
    TerrainMap_Load(&tmap, "testmap.txt");
 
-/*
-   for(i = 0; i < 10; i++)
-   {
-      tmap.data[i + 90] = TMAP_TILE_DIRT;
-   }
-   tmap.data[80] = TMAP_TILE_DIRT;
-   tmap.data[89] = TMAP_TILE_DIRT;
-   tmap.data[81] = TMAP_TILE_LADDER;
-   tmap.data[71] = TMAP_TILE_LADDER;
-*/
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -156,9 +145,7 @@ int main(int args, char * argc[])
       SDL_RenderPresent(rend);
    }
    
-   //printf("1\n");
    TerrainMap_Destroy(&tmap); 
-   //printf("2\n");
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
@@ -303,7 +290,7 @@ static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * pl
       else if(IsTerrainPassable(current_t, desired_t) && 
               (
                 (current_t == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
-                (below_t   == TMAP_TILE_LADDER && player1_data->grid_p.y < desired_p.y)
+                (player1_data->grid_p.y < desired_p.y)
               ))
       {
          //player1_data->next_grid_p.x = desired_p.x;
@@ -386,7 +373,7 @@ static int IsTerrainPassable(int from, int to)
 static int IsTerrainFallable(int from, int to)
 {
    int result;
-   if(to == TMAP_TILE_AIR)
+   if(to == TMAP_TILE_AIR && from != TMAP_TILE_LADDER)
    {
       result = 1;      
    }
