@@ -14,9 +14,14 @@
 #define IMGID_DOORCLOSE    0x0200
 #define IMGID_DOOROPEN     0x0201
 
-#define MOVE_TIME          0.5f
+#define MOVE_TIMEOUT             0.5f
+#define FALL_TIMEOUT             0.3f
+#define DIG_TIMEOUT              0.5f
+
 #define MOTION_STATE_NOT_MOVING  0
-#define MOTION_STATE_MOVEING     1
+#define MOTION_STATE_MOVING     1
+#define MOTION_STATE_FALLING     2
+#define MOTION_STATE_DIGGING     3
 
 
 #define TMAP_TILE_AIR    0
@@ -31,6 +36,8 @@ enum player_input_e
    e_pi_move_down,
    e_pi_move_left,
    e_pi_move_right,
+   e_pi_dig_left,
+   e_pi_dig_right,
    e_pi_last
 };
 
@@ -49,6 +56,7 @@ struct player_data_s
    pos_t next_grid_p;
    int motion_state;
    float move_timer;
+   float move_timeout;
 };
 
 typedef struct TerrainMap_S TerrainMap_T;
@@ -196,6 +204,14 @@ static void handle_input(const SDL_Event * event, int * done, int * player_input
    {
       key = e_pi_move_right;
    }
+   else if(event->key.keysym.sym == SDLK_KP_7)
+   {
+      key = e_pi_dig_left;
+   }
+   else if(event->key.keysym.sym == SDLK_KP_9)
+   {
+      key = e_pi_dig_right;
+   }
    else
    {
       key = e_pi_last;
@@ -280,40 +296,54 @@ static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * pl
          desired_p.x ++;
       }
 
+
       desired_t = TerrainMap_GetTile(tmap, desired_p.x, desired_p.y);
       below_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
       above_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
       current_t = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y);
-      if(IsTerrainFallable(current_t, below_t) == 1)
+      if(IsTerrainFallable(current_t, below_t) == 1) // Falling
       {
          player1_data->next_grid_p.y ++;
+         player1_data->motion_state = MOTION_STATE_FALLING;
       }
       else if(IsTerrainPassable(current_t, desired_t) && 
-              (
-                (current_t == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
-                (player1_data->grid_p.y < desired_p.y)
-              ))
+            (
+             (current_t == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
+             (player1_data->grid_p.y < desired_p.y)
+            )) // Ladders and Bars
       {
          //player1_data->next_grid_p.x = desired_p.x;
          player1_data->next_grid_p.y = desired_p.y; 
+         player1_data->motion_state = MOTION_STATE_MOVING;
       }
-      else if(IsTerrainPassable(current_t, desired_t) == 1)
+      else if(IsTerrainPassable(current_t, desired_t) == 1) // Horizontal Movment
       {
          player1_data->next_grid_p.x = desired_p.x;
          //player1_data->next_grid_p.y = desired_p.y;
+         player1_data->motion_state = MOTION_STATE_MOVING;
       }
 
-      if(player1_data->next_grid_p.x != player1_data->grid_p.x ||
-         player1_data->next_grid_p.y != player1_data->grid_p.y)
+      if(player1_data->grid_p.x != player1_data->next_grid_p.x || 
+         player1_data->grid_p.y != player1_data->next_grid_p.y)
       {
-         player1_data->motion_state = MOTION_STATE_MOVEING;
          player1_data->move_timer = 0;
+
+
+         switch(player1_data->motion_state)
+         {
+            case MOTION_STATE_DIGGING: player1_data->move_timeout = DIG_TIMEOUT;  break;
+            case MOTION_STATE_MOVING:  player1_data->move_timeout = MOVE_TIMEOUT; break;
+            case MOTION_STATE_FALLING: player1_data->move_timeout = FALL_TIMEOUT; break;
+            default:                   player1_data->move_timeout = 0;            break;
+         }
       }
    }
-   else if(player1_data->motion_state == MOTION_STATE_MOVEING)
+   else if(player1_data->motion_state == MOTION_STATE_MOVING ||
+           player1_data->motion_state == MOTION_STATE_FALLING ||
+           player1_data->motion_state == MOTION_STATE_DIGGING)
    {
       player1_data->move_timer += seconds;
-      if(player1_data->move_timer >= MOVE_TIME)
+      if(player1_data->move_timer >= player1_data->move_timeout)
       {
          player1_data->motion_state = MOTION_STATE_NOT_MOVING;
          player1_data->grid_p.x = player1_data->next_grid_p.x;
@@ -329,26 +359,31 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap
    float move_percent;
 
    TerrainMap_Render(tmap, rend, t_palet);
-   if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
+   switch(player1_data->motion_state)
    {
+   case MOTION_STATE_NOT_MOVING:
+  
       draw_loc.x = player1_data->grid_p.x * TILE_WIDTH;
       draw_loc.y = player1_data->grid_p.y * TILE_HEIGHT;
-   }
-   else if(player1_data->motion_state == MOTION_STATE_MOVEING)
-   {
+      break;
+   case MOTION_STATE_FALLING:
+   case MOTION_STATE_DIGGING:
+   case MOTION_STATE_MOVING:
+   
       diff.x = (player1_data->next_grid_p.x - player1_data->grid_p.x) * TILE_WIDTH;
       diff.y = (player1_data->next_grid_p.y - player1_data->grid_p.y) * TILE_HEIGHT;
-      move_percent = player1_data->move_timer / MOVE_TIME;
+      move_percent = player1_data->move_timer / player1_data->move_timeout;
       draw_loc.x = (player1_data->grid_p.x * TILE_WIDTH) + 
                    (int)(diff.x * move_percent);
       draw_loc.y = (player1_data->grid_p.y * TILE_HEIGHT) + 
                    (int)(diff.y * move_percent);
+      break;
 
-   }
-   else
-   {
+   
+   default:
       draw_loc.x = 0;
       draw_loc.y = 0;
+      break;
    }
 
 
