@@ -19,8 +19,9 @@
 #define MOTION_STATE_MOVEING     1
 
 
-#define TMAP_TILE_AIR  0
-#define TMAP_TILE_DIRT 1
+#define TMAP_TILE_AIR    0
+#define TMAP_TILE_DIRT   1
+#define TMAP_TILE_LADDER 2
 
 typedef enum player_input_e player_input_t;
 enum player_input_e
@@ -59,11 +60,16 @@ struct TerrainMap_S
 
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
+static void TerrainMap_Load(TerrainMap_T * map, const char * filename);
+
 static void TerrainMap_Destroy(TerrainMap_T * map);
 
 static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet); 
 
 static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
+
+static int IsTerrainPassable(int from, int to);
+static int IsTerrainFallable(int from, int to);
 
 static void CheckForExit(const SDL_Event *event, int * done);
 
@@ -102,14 +108,19 @@ int main(int args, char * argc[])
    player1_data.grid_p.y = 0;
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
-   TerrainMap_Init(&tmap, 10, 10);
+   //TerrainMap_Init(&tmap, 10, 10);
+   TerrainMap_Load(&tmap, "testmap.txt");
 
+/*
    for(i = 0; i < 10; i++)
    {
       tmap.data[i + 90] = TMAP_TILE_DIRT;
    }
    tmap.data[80] = TMAP_TILE_DIRT;
    tmap.data[89] = TMAP_TILE_DIRT;
+   tmap.data[81] = TMAP_TILE_LADDER;
+   tmap.data[71] = TMAP_TILE_LADDER;
+*/
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -145,8 +156,9 @@ int main(int args, char * argc[])
       SDL_RenderPresent(rend);
    }
    
-   
+   //printf("1\n");
    TerrainMap_Destroy(&tmap); 
+   //printf("2\n");
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
@@ -253,6 +265,8 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * player1_data)
 {
    pos_t desired_p;
+   int desired_t, current_t, below_t, above_t;
+    
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
       player1_data->next_grid_p.x = player1_data->grid_p.x;
@@ -278,18 +292,31 @@ static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * pl
          desired_p.x ++;
       }
 
-      if(TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1) == TMAP_TILE_AIR)
+      desired_t = TerrainMap_GetTile(tmap, desired_p.x, desired_p.y);
+      below_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
+      above_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
+      current_t = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y);
+      if(IsTerrainFallable(current_t, below_t) == 1)
       {
          player1_data->next_grid_p.y ++;
       }
-      else if(TerrainMap_GetTile(tmap, desired_p.x, desired_p.y) != TMAP_TILE_DIRT)
+      else if(IsTerrainPassable(current_t, desired_t) && 
+              (
+                (current_t == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
+                (below_t   == TMAP_TILE_LADDER && player1_data->grid_p.y < desired_p.y)
+              ))
+      {
+         //player1_data->next_grid_p.x = desired_p.x;
+         player1_data->next_grid_p.y = desired_p.y; 
+      }
+      else if(IsTerrainPassable(current_t, desired_t) == 1)
       {
          player1_data->next_grid_p.x = desired_p.x;
-         player1_data->next_grid_p.y = desired_p.y;
+         //player1_data->next_grid_p.y = desired_p.y;
       }
 
       if(player1_data->next_grid_p.x != player1_data->grid_p.x ||
-            player1_data->next_grid_p.y != player1_data->grid_p.y)
+         player1_data->next_grid_p.y != player1_data->grid_p.y)
       {
          player1_data->motion_state = MOTION_STATE_MOVEING;
          player1_data->move_timer = 0;
@@ -342,6 +369,34 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap
  
 }
 
+static int IsTerrainPassable(int from, int to)
+{
+   int result;
+   if(to == TMAP_TILE_DIRT)
+   {
+      result = 0;
+   }
+   else
+   {
+      result = 1;
+   }
+   return result;
+}
+
+static int IsTerrainFallable(int from, int to)
+{
+   int result;
+   if(to == TMAP_TILE_AIR)
+   {
+      result = 1;      
+   }
+   else
+   {
+      result = 0;
+   }
+   return result;
+}
+
 // S TerrainMap
 
 
@@ -358,6 +413,44 @@ static void TerrainMap_Init(TerrainMap_T * map, int width, int height)
       map->data[i] = TMAP_TILE_AIR;
    }
 }
+
+static void TerrainMap_Load(TerrainMap_T * map, const char * filename)
+{
+   FILE * fp;
+   int input, index;
+   int w, h;
+
+   fp = fopen(filename, "r");
+
+   if(fp == NULL)
+   {
+      printf("Error: Could not open \"%s\"\n", filename);
+   }
+   else
+   {
+      fscanf(fp, "%i", &w);
+      fscanf(fp, "%i", &h);
+
+      TerrainMap_Init(map, w, h);
+      index = 0;
+      while(!feof(fp))
+      {
+         fscanf(fp, "%i", &input);
+         switch(input)
+         {
+            case 0:  map->data[index] = TMAP_TILE_AIR;    break;
+            case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
+            case 3:  map->data[index] = TMAP_TILE_LADDER; break;
+            default: map->data[index] = TMAP_TILE_AIR;    break;
+         }
+         index ++;
+         
+      }
+
+      fclose(fp);
+   }
+}
+
 
 static void TerrainMap_Destroy(TerrainMap_T * map)
 {
@@ -384,6 +477,9 @@ static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Textu
       {
          case TMAP_TILE_DIRT:
          draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
+         break;
+         case TMAP_TILE_LADDER:
+         draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
          break;
       }
 
