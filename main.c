@@ -22,6 +22,7 @@
 #define TMAP_TILE_AIR    0
 #define TMAP_TILE_DIRT   1
 #define TMAP_TILE_LADDER 2
+#define TMAP_TILE_BAR    3
 
 typedef enum player_input_e player_input_t;
 enum player_input_e
@@ -373,7 +374,7 @@ static int IsTerrainPassable(int from, int to)
 static int IsTerrainFallable(int from, int to)
 {
    int result;
-   if(to == TMAP_TILE_AIR && from != TMAP_TILE_LADDER)
+   if((to == TMAP_TILE_AIR || to == TMAP_TILE_BAR) && from != TMAP_TILE_LADDER && from != TMAP_TILE_BAR)
    {
       result = 1;      
    }
@@ -428,6 +429,7 @@ static void TerrainMap_Load(TerrainMap_T * map, const char * filename)
             case 0:  map->data[index] = TMAP_TILE_AIR;    break;
             case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
             case 3:  map->data[index] = TMAP_TILE_LADDER; break;
+            case 4:  map->data[index] = TMAP_TILE_BAR;    break;
             default: map->data[index] = TMAP_TILE_AIR;    break;
          }
          index ++;
@@ -467,6 +469,9 @@ static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Textu
          break;
          case TMAP_TILE_LADDER:
          draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
+         break;
+         case TMAP_TILE_BAR:
+         draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
          break;
       }
 
