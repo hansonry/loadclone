@@ -84,6 +84,16 @@ struct DigSpot_S
    float timer;
 };
 
+typedef struct LevelTile_S LevelTile_T;
+struct LevelTile_S
+{
+   pos_t pos;
+   int index;
+   int terrain_type;
+   int has_hole;
+   int out_of_range;
+};
+
 
 static void Level_Init(Level_T * level);
 
@@ -94,6 +104,8 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
 static void Level_Update(Level_T * level, float seconds);
 
 static void Level_AddDigSpot(Level_T * level, int x, int y);
+
+static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile);
 
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
@@ -670,6 +682,40 @@ static void Level_AddDigSpot(Level_T * level, int x, int y)
    dig_spot->pos.y = y;
    dig_spot->timer = 0;
 }
+
+static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
+{
+   size_t count, i;
+   DigSpot_T * dig_spot;
+   tile->pos.x = x;
+   tile->pos.y = y;
+   if(x >= 0 && x < level->tmap.width && y >= 0 && y < level->tmap.height)
+   {
+      tile->index = x + (y * level->tmap.width);
+      tile->out_of_range = 0;
+      tile->terrain_type = level->tmap.data[tile->index];
+      tile->has_hole = 0;
+
+      // Check for hole
+      dig_spot = ArrayList_Get(&level->dig_list, &count, NULL);
+      for(i = 0; i < count; i++)
+      {
+         if(dig_spot[i].pos.x == x && dig_spot[i].pos.y == y)
+         {
+            tile->has_hole = 1;
+            break;
+         }
+      }
+      
+
+      
+   }
+   else
+   {
+      tile->out_of_range = 1;
+   }
+}
+
 
 // E Level
 
