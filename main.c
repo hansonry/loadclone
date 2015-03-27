@@ -19,9 +19,10 @@
 #define MOVE_TIMEOUT             0.5f
 #define FALL_TIMEOUT             0.3f
 #define DIG_TIMEOUT              0.5f
+#define HOLE_TIMEOUT             5.0f
 
 #define MOTION_STATE_NOT_MOVING  0
-#define MOTION_STATE_MOVING     1
+#define MOTION_STATE_MOVING      1
 #define MOTION_STATE_FALLING     2
 #define MOTION_STATE_DIGGING     3
 
@@ -76,12 +77,23 @@ struct Level_S
    ArrayList_T  dig_list;
 };
 
+typedef struct DigSpot_S DigSpot_T;
+struct DigSpot_S
+{
+   pos_t pos;
+   float timer;
+};
+
 
 static void Level_Init(Level_T * level);
 
 static void Level_Destroy(Level_T * level);
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet);
+
+static void Level_Update(Level_T * level, float seconds);
+
+static void Level_AddDigSpot(Level_T * level, int x, int y);
 
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
@@ -285,7 +297,11 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 static void handle_update(float seconds, Level_T * level, player_data_t * player1_data)
 {
    pos_t desired_p;
+   pos_t desired_dig_p;
    int desired_t, current_t, below_t, above_t;
+   int desired_dig_t;
+   int wants_to_dig;
+   DigSpot_T * dig_spot;
     
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
@@ -311,16 +327,43 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       {
          desired_p.x ++;
       }
+      if(player1_data->input_flags[e_pi_dig_left]   == 1)
+      {
+         wants_to_dig = 1;
+         desired_dig_p.x = player1_data->grid_p.x - 1;
+         desired_dig_p.y = player1_data->grid_p.y + 1;
+      }
+      else if(player1_data->input_flags[e_pi_dig_right]  == 1)
+      {
+         wants_to_dig = 1;
+         desired_dig_p.x = player1_data->grid_p.x + 1;
+         desired_dig_p.y = player1_data->grid_p.y + 1;
+      }
+      else
+      {
+         wants_to_dig = 0;
+      }
+
 
 
       desired_t = TerrainMap_GetTile(&level->tmap, desired_p.x, desired_p.y);
       below_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
       above_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
       current_t = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y);
+      if(wants_to_dig == 1)
+      {
+         desired_dig_t = TerrainMap_GetTile(&level->tmap, desired_dig_p.x, desired_dig_p.y);
+      }
+
       if(IsTerrainFallable(current_t, below_t) == 1) // Falling
       {
          player1_data->next_grid_p.y ++;
          player1_data->motion_state = MOTION_STATE_FALLING;
+      }
+      else if(wants_to_dig == 1 && desired_dig_t == TMAP_TILE_DIRT)
+      {
+         player1_data->motion_state = MOTION_STATE_DIGGING;
+         Level_AddDigSpot(level, desired_dig_p.x, desired_dig_p.y);
       }
       else if(IsTerrainPassable(current_t, desired_t) && 
             (
@@ -366,6 +409,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          player1_data->grid_p.y = player1_data->next_grid_p.y;
       }
    }
+   Level_Update(level, seconds);
 }
 
 static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data)
@@ -563,18 +607,68 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 static void Level_Init(Level_T * level)
 {
    TerrainMap_Load(&level->tmap, "testmap.txt");
-   //level->dig_list
+   ArrayList_Init(&level->dig_list, sizeof(DigSpot_T), 0);
 
 }
 
 static void Level_Destroy(Level_T * level)
 {
    TerrainMap_Destroy(&level->tmap);
+   ArrayList_Destroy(&level->dig_list);
 }
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
 {
+   size_t size, i;
+   DigSpot_T * dig_spot;
+   int x, y;
+
+   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
+
+   for(i = 0; i < size; i ++)
+   {
+      x = dig_spot[i].pos.x * TILE_WIDTH;
+      y = dig_spot[i].pos.y * TILE_HEIGHT;
+      draw_at(rend, t_palet, IMGID_BROKENBLOCK, x, y);
+   }
+
    TerrainMap_Render(&level->tmap, rend, t_palet);
+}
+
+static void Level_Update(Level_T * level, float seconds)
+{
+   // Update Dig Spots
+   size_t size, i;
+   DigSpot_T * dig_spot;
+
+   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
+
+   // Update Dig Spots
+   for(i = 0; i < size; i++)
+   {
+      dig_spot[i].timer += seconds;
+   }
+
+   // Remove spots
+
+   // Iterate backward so that the removes don't effect the index
+   for(i = size - 1; i < size; i--)
+   {
+      if(dig_spot[i].timer >= HOLE_TIMEOUT)
+      {
+         ArrayList_Remove(&level->dig_list, i);
+      }
+   }
+
+}
+
+static void Level_AddDigSpot(Level_T * level, int x, int y)
+{
+   DigSpot_T * dig_spot;
+   dig_spot = ArrayList_Add(&level->dig_list, NULL);
+   dig_spot->pos.x = x;
+   dig_spot->pos.y = y;
+   dig_spot->timer = 0;
 }
 
 // E Level
