@@ -105,6 +105,8 @@ static void Level_Update(Level_T * level, float seconds);
 
 static void Level_AddDigSpot(Level_T * level, int x, int y);
 
+static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y);
+
 static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile);
 
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
@@ -631,20 +633,58 @@ static void Level_Destroy(Level_T * level)
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
 {
-   size_t size, i;
    DigSpot_T * dig_spot;
-   int x, y;
+   int index;
+   int tile_rend;
+   pos_t p, c;
+   TerrainMap_T * map;
 
-   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
 
-   for(i = 0; i < size; i ++)
+
+   //TerrainMap_Render(&level->tmap, rend, t_palet);
+
+   map = &level->tmap;
+   p.x = 0;
+   p.y = 0;
+   index = 0;
+   c.x = 0;
+   c.y = 0; 
+   while(p.y < map->height)
    {
-      x = dig_spot[i].pos.x * TILE_WIDTH;
-      y = dig_spot[i].pos.y * TILE_HEIGHT;
-      draw_at(rend, t_palet, IMGID_BROKENBLOCK, x, y);
+
+      switch(map->data[index])
+      {
+         case TMAP_TILE_DIRT:
+            dig_spot = Level_GetDigSpot(level, p.x, p.y);
+            if(dig_spot == NULL)
+            {
+               draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
+            }
+            else
+            {
+               draw_at(rend, t_palet, IMGID_BROKENBLOCK, c.x, c.y);
+            }
+            break;
+         case TMAP_TILE_LADDER:
+            draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
+            break;
+         case TMAP_TILE_BAR:
+            draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
+            break;
+      }
+
+      index ++;
+      p.x ++;
+      c.x += TILE_WIDTH;
+      if(p.x >= map->width)
+      {
+         p.x = 0;
+         c.x = 0;
+         p.y ++;
+         c.y += TILE_HEIGHT;
+      }
    }
 
-   TerrainMap_Render(&level->tmap, rend, t_palet);
 }
 
 static void Level_Update(Level_T * level, float seconds)
@@ -683,9 +723,27 @@ static void Level_AddDigSpot(Level_T * level, int x, int y)
    dig_spot->timer = 0;
 }
 
+static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y)
+{
+   size_t i, size;
+   DigSpot_T * dig_spot, * result;
+
+   result = NULL;
+   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
+   for(i = 0; i < size; i ++)
+   {
+      if(x == dig_spot[i].pos.x && y == dig_spot[i].pos.y)
+      {
+         result = &dig_spot[i];
+         break;
+      }
+   }
+
+   return result;
+}
+
 static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
 {
-   size_t count, i;
    DigSpot_T * dig_spot;
    tile->pos.x = x;
    tile->pos.y = y;
@@ -697,15 +755,16 @@ static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
       tile->has_hole = 0;
 
       // Check for hole
-      dig_spot = ArrayList_Get(&level->dig_list, &count, NULL);
-      for(i = 0; i < count; i++)
+      dig_spot = Level_GetDigSpot(level, x, y);
+      if(dig_spot == NULL)
       {
-         if(dig_spot[i].pos.x == x && dig_spot[i].pos.y == y)
-         {
-            tile->has_hole = 1;
-            break;
-         }
+         tile->has_hole = 0;
       }
+      else
+      {
+         tile->has_hole = 1;
+      }
+
       
 
       
