@@ -2,6 +2,8 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 
+#include "ArrayList.h"
+
 #define TILE_WIDTH             32
 #define TILE_HEIGHT            32
 
@@ -67,6 +69,20 @@ struct TerrainMap_S
    int * data;
 };
 
+typedef struct Level_S Level_T;
+struct Level_S
+{
+   TerrainMap_T tmap;
+   ArrayList_T  dig_list;
+};
+
+
+static void Level_Init(Level_T * level);
+
+static void Level_Destroy(Level_T * level);
+
+static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet);
+
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
 static void TerrainMap_Load(TerrainMap_T * map, const char * filename);
@@ -88,9 +104,9 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 
 static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
 
-static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * player1_data);
+static void handle_update(float seconds, Level_T * level, player_data_t * player1_data);
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap_T * tmap, player_data_t * player1_data);
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data);
 
 int main(int args, char * argc[])
 {
@@ -107,7 +123,7 @@ int main(int args, char * argc[])
 
  
    player_data_t player1_data;
-   TerrainMap_T tmap;
+   Level_T level;
 
    for(i = 0; i < e_pi_last; i++)
    {
@@ -117,7 +133,7 @@ int main(int args, char * argc[])
    player1_data.grid_p.y = 0;
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
-   TerrainMap_Load(&tmap, "testmap.txt");
+   Level_Init(&level);
 
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -145,16 +161,16 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &tmap, &player1_data);
+      handle_update(seconds, &level, &player1_data);
       
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
       
-      handle_render(rend, t_palet, &tmap, &player1_data);
+      handle_render(rend, t_palet, &level, &player1_data);
       SDL_RenderPresent(rend);
    }
    
-   TerrainMap_Destroy(&tmap); 
+   Level_Destroy(&level); 
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
@@ -266,7 +282,7 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
    SDL_RenderCopy(rend, text, &r_src, &r_dest);
 }
 
-static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * player1_data)
+static void handle_update(float seconds, Level_T * level, player_data_t * player1_data)
 {
    pos_t desired_p;
    int desired_t, current_t, below_t, above_t;
@@ -297,10 +313,10 @@ static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * pl
       }
 
 
-      desired_t = TerrainMap_GetTile(tmap, desired_p.x, desired_p.y);
-      below_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
-      above_t   = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
-      current_t = TerrainMap_GetTile(tmap, player1_data->grid_p.x, player1_data->grid_p.y);
+      desired_t = TerrainMap_GetTile(&level->tmap, desired_p.x, desired_p.y);
+      below_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
+      above_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
+      current_t = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y);
       if(IsTerrainFallable(current_t, below_t) == 1) // Falling
       {
          player1_data->next_grid_p.y ++;
@@ -352,13 +368,13 @@ static void handle_update(float seconds, TerrainMap_T * tmap, player_data_t * pl
    }
 }
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, TerrainMap_T * tmap, player_data_t * player1_data)
+static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data)
 {
    pos_t draw_loc;
    pos_t diff;
    float move_percent;
 
-   TerrainMap_Render(tmap, rend, t_palet);
+   Level_Render(level, rend, t_palet);
    switch(player1_data->motion_state)
    {
    case MOTION_STATE_NOT_MOVING:
@@ -541,5 +557,25 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 }
 
 // E TerrainMap
+// S Level
 
+
+static void Level_Init(Level_T * level)
+{
+   TerrainMap_Load(&level->tmap, "testmap.txt");
+   //level->dig_list
+
+}
+
+static void Level_Destroy(Level_T * level)
+{
+   TerrainMap_Destroy(&level->tmap);
+}
+
+static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
+{
+   TerrainMap_Render(&level->tmap, rend, t_palet);
+}
+
+// E Level
 
