@@ -31,6 +31,7 @@
 #define TMAP_TILE_DIRT   1
 #define TMAP_TILE_LADDER 2
 #define TMAP_TILE_BAR    3
+#define TMAP_TILE_DOOR   4
 
 typedef enum player_input_e player_input_t;
 enum player_input_e
@@ -653,6 +654,7 @@ static void Level_Load(Level_T * level, const char * filename)
                map->data[index] = TMAP_TILE_AIR;
                Level_AddGold(level, p.x, p.y);
                break;
+            case 6: map->data[index] = TMAP_TILE_DOOR;    break;
             default: map->data[index] = TMAP_TILE_AIR;    break;
          }
          index ++;
@@ -678,8 +680,19 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
    TerrainMap_T * map;
    Gold_T * gold;
    size_t i, size;
+   int all_gold_colected;
 
 
+
+   (void)ArrayList_Get(&level->gold_list, &size, NULL);
+   if(size > 0)
+   {
+      all_gold_colected = 0;
+   }
+   else
+   {
+      all_gold_colected = 1;
+   }
 
    //TerrainMap_Render(&level->tmap, rend, t_palet);
 
@@ -709,6 +722,16 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
             break;
          case TMAP_TILE_BAR:
             draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
+            break;
+         case TMAP_TILE_DOOR:
+            if(all_gold_colected == 1)
+            {
+               draw_at(rend, t_palet, IMGID_DOOROPEN, c.x, c.y);
+            }
+            else
+            {
+               draw_at(rend, t_palet, IMGID_DOORCLOSE, c.x, c.y);
+            }
             break;
       }
 
@@ -859,10 +882,6 @@ static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
       {
          tile->gold_index = (int)index;
       }
-
-      
-
-      
    }
    else
    {
