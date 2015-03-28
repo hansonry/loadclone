@@ -51,6 +51,8 @@ struct pos_s
    int y;
 };
 
+#define POS_SPLIT(p, dx, dy) (p).x + (dx), (p).y + (dy)
+
 typedef struct player_data_s player_data_t;
 struct player_data_s
 {
@@ -119,8 +121,8 @@ static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Textu
 
 static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
-static int IsTerrainPassable(int from, int to);
-static int IsTerrainFallable(int from, int to);
+static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
+static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
 
 static void CheckForExit(const SDL_Event *event, int * done);
 
@@ -312,10 +314,9 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
 {
    pos_t desired_p;
    pos_t desired_dig_p;
-   int desired_t, current_t, below_t, above_t;
-   int desired_dig_t;
    int wants_to_dig;
-   DigSpot_T * dig_spot;
+   LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
+   LevelTile_T player_above_tile, player_below_tile;
     
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
@@ -358,30 +359,30 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          wants_to_dig = 0;
       }
 
+      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
+      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
+      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_above_tile);
+      Level_QueryTile(level, POS_SPLIT(desired_p, 0, 0),             &player_desired_tile);
 
 
-      desired_t = TerrainMap_GetTile(&level->tmap, desired_p.x, desired_p.y);
-      below_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y + 1);
-      above_t   = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y - 1);
-      current_t = TerrainMap_GetTile(&level->tmap, player1_data->grid_p.x, player1_data->grid_p.y);
       if(wants_to_dig == 1)
       {
-         desired_dig_t = TerrainMap_GetTile(&level->tmap, desired_dig_p.x, desired_dig_p.y);
+         Level_QueryTile(level, POS_SPLIT(desired_dig_p, 0, 0), &dig_desired_tile);
       }
 
-      if(IsTerrainFallable(current_t, below_t) == 1) // Falling
+      if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling
       {
          player1_data->next_grid_p.y ++;
          player1_data->motion_state = MOTION_STATE_FALLING;
       }
-      else if(wants_to_dig == 1 && desired_dig_t == TMAP_TILE_DIRT)
+      else if(wants_to_dig == 1 && dig_desired_tile.terrain_type == TMAP_TILE_DIRT)
       {
          player1_data->motion_state = MOTION_STATE_DIGGING;
          Level_AddDigSpot(level, desired_dig_p.x, desired_dig_p.y);
       }
-      else if(IsTerrainPassable(current_t, desired_t) && 
+      else if(IsTerrainPassable(&player_current_tile, &player_desired_tile) && 
             (
-             (current_t == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
+             (player_current_tile.terrain_type == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
              (player1_data->grid_p.y < desired_p.y)
             )) // Ladders and Bars
       {
@@ -389,7 +390,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          player1_data->next_grid_p.y = desired_p.y; 
          player1_data->motion_state = MOTION_STATE_MOVING;
       }
-      else if(IsTerrainPassable(current_t, desired_t) == 1) // Horizontal Movment
+      else if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1) // Horizontal Movment
       {
          player1_data->next_grid_p.x = desired_p.x;
          //player1_data->next_grid_p.y = desired_p.y;
@@ -466,10 +467,10 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
  
 }
 
-static int IsTerrainPassable(int from, int to)
+static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to)
 {
    int result;
-   if(to == TMAP_TILE_DIRT)
+   if(to->terrain_type == TMAP_TILE_DIRT)
    {
       result = 0;
    }
@@ -480,10 +481,11 @@ static int IsTerrainPassable(int from, int to)
    return result;
 }
 
-static int IsTerrainFallable(int from, int to)
+static int IsTerrainFallable(LevelTile_T *  from, LevelTile_T *  to)
 {
    int result;
-   if((to == TMAP_TILE_AIR || to == TMAP_TILE_BAR) && from != TMAP_TILE_LADDER && from != TMAP_TILE_BAR)
+   if((to->terrain_type == TMAP_TILE_AIR || to->terrain_type == TMAP_TILE_BAR || to->has_hole == 1) && 
+      from->terrain_type != TMAP_TILE_LADDER && from->terrain_type != TMAP_TILE_BAR)
    {
       result = 1;      
    }
@@ -570,18 +572,17 @@ static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Textu
    c.y = 0; 
    while(p.y < map->height)
    {
-
       switch(map->data[index])
       {
          case TMAP_TILE_DIRT:
-         draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
-         break;
+            draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
+            break;
          case TMAP_TILE_LADDER:
-         draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
-         break;
+            draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
+            break;
          case TMAP_TILE_BAR:
-         draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
-         break;
+            draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
+            break;
       }
 
       index ++;
@@ -651,7 +652,6 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
    c.y = 0; 
    while(p.y < map->height)
    {
-
       switch(map->data[index])
       {
          case TMAP_TILE_DIRT:
@@ -684,7 +684,6 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
          c.y += TILE_HEIGHT;
       }
    }
-
 }
 
 static void Level_Update(Level_T * level, float seconds)
