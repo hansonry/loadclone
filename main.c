@@ -77,6 +77,14 @@ struct Level_S
 {
    TerrainMap_T tmap;
    ArrayList_T  dig_list;
+   ArrayList_T  gold_list;
+};
+
+
+typedef struct Gold_S Gold_T;
+struct Gold_S
+{
+   pos_t pos;
 };
 
 typedef struct DigSpot_S DigSpot_T;
@@ -94,6 +102,7 @@ struct LevelTile_S
    int terrain_type;
    int has_hole;
    int out_of_range;
+   int gold_index;
 };
 
 
@@ -106,6 +115,10 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
 static void Level_Update(Level_T * level, float seconds);
 
 static void Level_AddDigSpot(Level_T * level, int x, int y);
+
+static void Level_AddGold(Level_T * level, int x, int y);
+
+static Gold_T * Level_GetGold(Level_T * level, int x, int y);
 
 static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y);
 
@@ -162,6 +175,7 @@ int main(int args, char * argc[])
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
    Level_Init(&level);
+   Level_AddGold(&level, 1, 1);
 
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -623,6 +637,7 @@ static void Level_Init(Level_T * level)
 {
    TerrainMap_Load(&level->tmap, "testmap.txt");
    ArrayList_Init(&level->dig_list, sizeof(DigSpot_T), 0);
+   ArrayList_Init(&level->gold_list, sizeof(Gold_T), 0);
 
 }
 
@@ -630,6 +645,7 @@ static void Level_Destroy(Level_T * level)
 {
    TerrainMap_Destroy(&level->tmap);
    ArrayList_Destroy(&level->dig_list);
+   ArrayList_Destroy(&level->gold_list);
 }
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
@@ -639,6 +655,8 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
    int tile_rend;
    pos_t p, c;
    TerrainMap_T * map;
+   Gold_T * gold;
+   size_t i, size;
 
 
 
@@ -684,6 +702,15 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
          c.y += TILE_HEIGHT;
       }
    }
+   
+   gold = ArrayList_Get(&level->gold_list, &size, NULL);
+   for(i = 0; i < size; i++)
+   {
+      c.x = gold[i].pos.x * TILE_WIDTH;
+      c.y = gold[i].pos.y * TILE_HEIGHT;
+      draw_at(rend, t_palet, IMGID_GOLD, c.x, c.y);
+   }
+   
 }
 
 static void Level_Update(Level_T * level, float seconds)
@@ -720,6 +747,31 @@ static void Level_AddDigSpot(Level_T * level, int x, int y)
    dig_spot->pos.x = x;
    dig_spot->pos.y = y;
    dig_spot->timer = 0;
+}
+
+static void Level_AddGold(Level_T * level, int x, int y)
+{
+   Gold_T * gold;
+   gold = ArrayList_Add(&level->gold_list, NULL);
+   gold->pos.x = x;
+   gold->pos.y = y;
+}
+
+static Gold_T * Level_GetGold(Level_T * level, int x, int y)
+{
+   size_t i, size;
+   Gold_T * gold, * result;
+   result = NULL;
+   gold = ArrayList_Get(&level->gold_list, &size, NULL);
+   for(i = 0; i < size; i++)
+   {
+      if(x == gold[i].pos.x && y == gold[i].pos.y)
+      {
+         result = &gold[i];
+         break;
+      }
+   }
+   return result;
 }
 
 static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y)
