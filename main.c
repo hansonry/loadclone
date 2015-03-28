@@ -110,6 +110,8 @@ static void Level_Init(Level_T * level);
 
 static void Level_Destroy(Level_T * level);
 
+static void Level_Load(Level_T * level, const char * filename);
+
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet);
 
 static void Level_Update(Level_T * level, float seconds);
@@ -125,8 +127,6 @@ static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y);
 static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile);
 
 static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
-
-static void TerrainMap_Load(TerrainMap_T * map, const char * filename);
 
 static void TerrainMap_Destroy(TerrainMap_T * map);
 
@@ -175,7 +175,7 @@ int main(int args, char * argc[])
    player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
    Level_Init(&level);
-   Level_AddGold(&level, 1, 1);
+   Level_Load(&level, "testmap.txt");
 
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -527,45 +527,6 @@ static void TerrainMap_Init(TerrainMap_T * map, int width, int height)
    }
 }
 
-static void TerrainMap_Load(TerrainMap_T * map, const char * filename)
-{
-   FILE * fp;
-   int input, index;
-   int w, h;
-
-   fp = fopen(filename, "r");
-
-   if(fp == NULL)
-   {
-      printf("Error: Could not open \"%s\"\n", filename);
-   }
-   else
-   {
-      fscanf(fp, "%i", &w);
-      fscanf(fp, "%i", &h);
-
-      TerrainMap_Init(map, w, h);
-      index = 0;
-      while(!feof(fp))
-      {
-         fscanf(fp, "%i", &input);
-         switch(input)
-         {
-            case 0:  map->data[index] = TMAP_TILE_AIR;    break;
-            case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
-            case 3:  map->data[index] = TMAP_TILE_LADDER; break;
-            case 4:  map->data[index] = TMAP_TILE_BAR;    break;
-            default: map->data[index] = TMAP_TILE_AIR;    break;
-         }
-         index ++;
-         
-      }
-
-      fclose(fp);
-   }
-}
-
-
 static void TerrainMap_Destroy(TerrainMap_T * map)
 {
    free(map->data);
@@ -635,10 +596,9 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 
 static void Level_Init(Level_T * level)
 {
-   TerrainMap_Load(&level->tmap, "testmap.txt");
+   TerrainMap_Init(&level->tmap, 10, 10);
    ArrayList_Init(&level->dig_list, sizeof(DigSpot_T), 0);
    ArrayList_Init(&level->gold_list, sizeof(Gold_T), 0);
-
 }
 
 static void Level_Destroy(Level_T * level)
@@ -646,6 +606,59 @@ static void Level_Destroy(Level_T * level)
    TerrainMap_Destroy(&level->tmap);
    ArrayList_Destroy(&level->dig_list);
    ArrayList_Destroy(&level->gold_list);
+}
+
+static void Level_Load(Level_T * level, const char * filename)
+{
+   FILE * fp;
+   int input, index;
+   int w, h;
+   TerrainMap_T * map;
+   pos_t p;
+
+   map = &level->tmap;
+   fp = fopen(filename, "r");
+
+   if(fp == NULL)
+   {
+      printf("Error: Could not open \"%s\"\n", filename);
+   }
+   else
+   {
+      fscanf(fp, "%i", &w);
+      fscanf(fp, "%i", &h);
+      TerrainMap_Destroy(map);
+
+      TerrainMap_Init(map, w, h);
+      index = 0;
+      p.x = p.y = 0;
+      while(!feof(fp))
+      {
+         fscanf(fp, "%i", &input);
+         switch(input)
+         {
+            case 0:  map->data[index] = TMAP_TILE_AIR;    break;
+            case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
+            case 3:  map->data[index] = TMAP_TILE_LADDER; break;
+            case 4:  map->data[index] = TMAP_TILE_BAR;    break;
+            case 5:
+               map->data[index] = TMAP_TILE_AIR;
+               Level_AddGold(level, p.x, p.y);
+               break;
+            default: map->data[index] = TMAP_TILE_AIR;    break;
+         }
+         index ++;
+         p.x ++;
+         if(p.x >= w)
+         {
+            p.x = 0;
+            p.y ++;
+         }
+         
+      }
+
+      fclose(fp);
+   }
 }
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
