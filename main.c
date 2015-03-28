@@ -120,7 +120,9 @@ static void Level_AddDigSpot(Level_T * level, int x, int y);
 
 static void Level_AddGold(Level_T * level, int x, int y);
 
-static Gold_T * Level_GetGold(Level_T * level, int x, int y);
+static void Level_RemoveGold(Level_T * level, size_t gold_index);
+
+static Gold_T * Level_GetGold(Level_T * level, int x, int y, size_t * out_index);
 
 static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y);
 
@@ -377,6 +379,12 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
       Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_above_tile);
       Level_QueryTile(level, POS_SPLIT(desired_p, 0, 0),             &player_desired_tile);
+
+      if(player_current_tile.gold_index >= 0)
+      {
+         Level_RemoveGold(level, player_current_tile.gold_index);
+      }
+
 
 
       if(wants_to_dig == 1)
@@ -770,7 +778,12 @@ static void Level_AddGold(Level_T * level, int x, int y)
    gold->pos.y = y;
 }
 
-static Gold_T * Level_GetGold(Level_T * level, int x, int y)
+static void Level_RemoveGold(Level_T * level, size_t gold_index)
+{
+   ArrayList_Remove(&level->gold_list, gold_index);
+}
+
+static Gold_T * Level_GetGold(Level_T * level, int x, int y, size_t * out_index)
 {
    size_t i, size;
    Gold_T * gold, * result;
@@ -780,7 +793,12 @@ static Gold_T * Level_GetGold(Level_T * level, int x, int y)
    {
       if(x == gold[i].pos.x && y == gold[i].pos.y)
       {
+
          result = &gold[i];
+         if(out_index != NULL)
+         {
+            (*out_index) = i;
+         }
          break;
       }
    }
@@ -809,6 +827,8 @@ static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y)
 static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
 {
    DigSpot_T * dig_spot;
+   Gold_T * gold;
+   size_t index;
    tile->pos.x = x;
    tile->pos.y = y;
    if(x >= 0 && x < level->tmap.width && y >= 0 && y < level->tmap.height)
@@ -827,6 +847,17 @@ static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
       else
       {
          tile->has_hole = 1;
+      }
+
+      // Check for gold
+      gold = Level_GetGold(level, x, y, &index);
+      if(gold == NULL)
+      {
+         tile->gold_index = -1;
+      }
+      else
+      {
+         tile->gold_index = (int)index;
       }
 
       
