@@ -79,6 +79,7 @@ struct Level_S
    TerrainMap_T tmap;
    ArrayList_T  dig_list;
    ArrayList_T  gold_list;
+   pos_t start_spot;
 };
 
 
@@ -133,8 +134,6 @@ static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
 static void TerrainMap_Destroy(TerrainMap_T * map);
 
-static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet); 
-
 static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
@@ -173,13 +172,14 @@ int main(int args, char * argc[])
    {
       player1_data.input_flags[i] = 0;
    }
-   player1_data.grid_p.x = 0;
-   player1_data.grid_p.y = 0;
-   player1_data.motion_state = MOTION_STATE_NOT_MOVING;
    
    Level_Init(&level);
    Level_Load(&level, "testmap.txt");
 
+   player1_data.grid_p.x = level.start_spot.x;
+   player1_data.grid_p.y = level.start_spot.y;
+   player1_data.motion_state = MOTION_STATE_NOT_MOVING;
+   
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    window = SDL_CreateWindow("Load Clone", 
@@ -607,45 +607,6 @@ static void TerrainMap_Destroy(TerrainMap_T * map)
    map->data = NULL;
 }
 
-static void TerrainMap_Render(TerrainMap_T * map, SDL_Renderer * rend, SDL_Texture * t_palet)
-{
-   int index;
-   int size;
-   int tile_rend;
-   pos_t p, c;
-
-   p.x = 0;
-   p.y = 0;
-   index = 0;
-   c.x = 0;
-   c.y = 0; 
-   while(p.y < map->height)
-   {
-      switch(map->data[index])
-      {
-         case TMAP_TILE_DIRT:
-            draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
-            break;
-         case TMAP_TILE_LADDER:
-            draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
-            break;
-         case TMAP_TILE_BAR:
-            draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
-            break;
-      }
-
-      index ++;
-      p.x ++;
-      c.x += TILE_WIDTH;
-      if(p.x >= map->width)
-      {
-         p.x = 0;
-         c.x = 0;
-         p.y ++;
-         c.y += TILE_HEIGHT;
-      }
-   }
-}
 
 static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 {
@@ -673,6 +634,8 @@ static void Level_Init(Level_T * level)
    TerrainMap_Init(&level->tmap, 10, 10);
    ArrayList_Init(&level->dig_list, sizeof(DigSpot_T), 0);
    ArrayList_Init(&level->gold_list, sizeof(Gold_T), 0);
+   level->start_spot.x = 0;
+   level->start_spot.y = 0;
 }
 
 static void Level_Destroy(Level_T * level)
@@ -713,6 +676,10 @@ static void Level_Load(Level_T * level, const char * filename)
          {
             case 0:  map->data[index] = TMAP_TILE_AIR;    break;
             case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
+            case 2:  
+               level->start_spot.x = p.x;
+               level->start_spot.y = p.y;
+               break;
             case 3:  map->data[index] = TMAP_TILE_LADDER; break;
             case 4:  map->data[index] = TMAP_TILE_BAR;    break;
             case 5:
