@@ -21,10 +21,10 @@
 #define DIG_TIMEOUT              0.5f
 #define HOLE_TIMEOUT             5.0f
 
-#define MOTION_STATE_NOT_MOVING  0
-#define MOTION_STATE_MOVING      1
-#define MOTION_STATE_FALLING     2
-#define MOTION_STATE_DIGGING     3
+#define PLAYER_STATE_NOT_MOVING  0
+#define PLAYER_STATE_MOVING      1
+#define PLAYER_STATE_FALLING     2
+#define PLAYER_STATE_DIGGING     3
 
 
 #define TMAP_TILE_AIR    0
@@ -60,7 +60,7 @@ struct player_data_s
    int input_flags[e_pi_last];
    pos_t grid_p;
    pos_t next_grid_p;
-   int motion_state;
+   int player_state;
    float move_timer;
    float move_timeout;
 };
@@ -178,7 +178,7 @@ int main(int args, char * argc[])
 
    player1_data.grid_p.x = level.start_spot.x;
    player1_data.grid_p.y = level.start_spot.y;
-   player1_data.motion_state = MOTION_STATE_NOT_MOVING;
+   player1_data.player_state = PLAYER_STATE_NOT_MOVING;
    
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -335,7 +335,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
    LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
    LevelTile_T dig_above_tile, player_below_tile;
     
-   if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
+   if(player1_data->player_state == PLAYER_STATE_NOT_MOVING)
    {
       // Check for valid commands/behavoirs
       
@@ -433,13 +433,13 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
 
       if(cmd_fall_valid == 1)
       {
-         player1_data->motion_state = MOTION_STATE_FALLING;
+         player1_data->player_state = PLAYER_STATE_FALLING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
       }
       else if(cmd_dig_left_valid == 1 && cmd_dig_right_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_DIGGING;
+         player1_data->player_state = PLAYER_STATE_DIGGING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
 
@@ -448,7 +448,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       }
       else if(cmd_dig_right_valid == 1 && cmd_dig_left_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_DIGGING;
+         player1_data->player_state = PLAYER_STATE_DIGGING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
 
@@ -457,57 +457,57 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       }
       else if(cmd_move_up_valid == 1 && cmd_move_down_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->player_state = PLAYER_STATE_MOVING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y - 1;
       }
       else if(cmd_move_down_valid == 1 && cmd_move_up_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->player_state = PLAYER_STATE_MOVING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
       }
       else if(cmd_let_go_valid == 1)
       {
-         player1_data->motion_state = MOTION_STATE_FALLING;
+         player1_data->player_state = PLAYER_STATE_FALLING;
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
       }
       else if(cmd_move_left_valid == 1 && cmd_move_right_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->player_state = PLAYER_STATE_MOVING;
          player1_data->next_grid_p.x = player1_data->grid_p.x - 1;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
       }
       else if(cmd_move_right_valid == 1 && cmd_move_left_valid == 0)
       {
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->player_state = PLAYER_STATE_MOVING;
          player1_data->next_grid_p.x = player1_data->grid_p.x + 1;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
       }
 
-      if(player1_data->motion_state != MOTION_STATE_NOT_MOVING)
+      if(player1_data->player_state != PLAYER_STATE_NOT_MOVING)
       {
          player1_data->move_timer = 0;
 
 
-         switch(player1_data->motion_state)
+         switch(player1_data->player_state)
          {
-            case MOTION_STATE_DIGGING: player1_data->move_timeout = DIG_TIMEOUT;  break;
-            case MOTION_STATE_MOVING:  player1_data->move_timeout = MOVE_TIMEOUT; break;
-            case MOTION_STATE_FALLING: player1_data->move_timeout = FALL_TIMEOUT; break;
+            case PLAYER_STATE_DIGGING: player1_data->move_timeout = DIG_TIMEOUT;  break;
+            case PLAYER_STATE_MOVING:  player1_data->move_timeout = MOVE_TIMEOUT; break;
+            case PLAYER_STATE_FALLING: player1_data->move_timeout = FALL_TIMEOUT; break;
             default:                   player1_data->move_timeout = 0;            break;
          }
       }
    }
-   else if(player1_data->motion_state == MOTION_STATE_MOVING ||
-           player1_data->motion_state == MOTION_STATE_FALLING ||
-           player1_data->motion_state == MOTION_STATE_DIGGING)
+   else if(player1_data->player_state == PLAYER_STATE_MOVING ||
+           player1_data->player_state == PLAYER_STATE_FALLING ||
+           player1_data->player_state == PLAYER_STATE_DIGGING)
    {
       player1_data->move_timer += seconds;
       if(player1_data->move_timer >= player1_data->move_timeout)
       {
-         player1_data->motion_state = MOTION_STATE_NOT_MOVING;
+         player1_data->player_state = PLAYER_STATE_NOT_MOVING;
          player1_data->grid_p.x = player1_data->next_grid_p.x;
          player1_data->grid_p.y = player1_data->next_grid_p.y;
       }
@@ -522,16 +522,16 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
    float move_percent;
 
    Level_Render(level, rend, t_palet);
-   switch(player1_data->motion_state)
+   switch(player1_data->player_state)
    {
-   case MOTION_STATE_NOT_MOVING:
+   case PLAYER_STATE_NOT_MOVING:
   
       draw_loc.x = player1_data->grid_p.x * TILE_WIDTH;
       draw_loc.y = player1_data->grid_p.y * TILE_HEIGHT;
       break;
-   case MOTION_STATE_FALLING:
-   case MOTION_STATE_DIGGING:
-   case MOTION_STATE_MOVING:
+   case PLAYER_STATE_FALLING:
+   case PLAYER_STATE_DIGGING:
+   case PLAYER_STATE_MOVING:
    
       diff.x = (player1_data->next_grid_p.x - player1_data->grid_p.x) * TILE_WIDTH;
       diff.y = (player1_data->next_grid_p.y - player1_data->grid_p.y) * TILE_HEIGHT;
