@@ -26,6 +26,7 @@
 #define PLAYER_STATE_FALLING     2
 #define PLAYER_STATE_DIGGING     3
 #define PLAYER_STATE_DEATH       4
+#define PLAYER_STATE_WIN         5
 
 
 #define TMAP_TILE_AIR    0
@@ -139,6 +140,7 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
+static int IsAllGoldColected(Level_T * level);
 
 static void CheckForExit(const SDL_Event *event, int * done);
 
@@ -335,9 +337,17 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
    int cmd_move_up_valid, cmd_move_down_valid, cmd_let_go_valid, cmd_fall_valid;
    LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
    LevelTile_T dig_above_tile, player_below_tile;
+   int all_gold_colected;
     
    Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
-   if(player1_data->player_state != PLAYER_STATE_DEATH)
+   all_gold_colected = IsAllGoldColected(level);
+   if(all_gold_colected == 1 && player_current_tile.terrain_type == TMAP_TILE_DOOR)
+   {
+      // TODO: WIN!!
+      player1_data->player_state = PLAYER_STATE_WIN;
+
+   }
+   else if(player1_data->player_state != PLAYER_STATE_DEATH)
    {
       if(player_current_tile.out_of_range == 1 || 
          (player_current_tile.terrain_type == TMAP_TILE_DIRT && player_current_tile.has_hole == 0))
@@ -346,6 +356,8 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          // Dec Lifes Here?
       }
    }
+
+
    
    if(player1_data->player_state == PLAYER_STATE_NOT_MOVING)
    {
@@ -574,6 +586,9 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
    case PLAYER_STATE_DEATH:
       show = 0;
       break;
+   case PLAYER_STATE_WIN:
+      show = 0; // Sure why not?
+      break;
    default:
       draw_loc.x = 0;
       draw_loc.y = 0;
@@ -620,6 +635,22 @@ static int IsTerrainFallable(LevelTile_T *  from, LevelTile_T *  to)
       result = 0;
    }
    return result;
+}
+
+static int IsAllGoldColected(Level_T * level)
+{
+   int all_gold_colected;
+   size_t size;
+   (void)ArrayList_Get(&level->gold_list, &size, NULL);
+   if(size > 0)
+   {
+      all_gold_colected = 0;
+   }
+   else
+   {
+      all_gold_colected = 1;
+   }
+   return all_gold_colected;
 }
 
 // S TerrainMap
@@ -753,16 +784,7 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
    int all_gold_colected;
 
 
-
-   (void)ArrayList_Get(&level->gold_list, &size, NULL);
-   if(size > 0)
-   {
-      all_gold_colected = 0;
-   }
-   else
-   {
-      all_gold_colected = 1;
-   }
+   all_gold_colected = IsAllGoldColected(level);
 
    //TerrainMap_Render(&level->tmap, rend, t_palet);
 
