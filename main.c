@@ -329,99 +329,164 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 
 static void handle_update(float seconds, Level_T * level, player_data_t * player1_data)
 {
-   pos_t desired_p;
-   pos_t desired_dig_p;
-   int wants_to_dig;
+   int cmd_dig_left_valid, cmd_dig_right_valid;
+   int cmd_move_left_valid, cmd_move_right_valid;
+   int cmd_move_up_valid, cmd_move_down_valid, cmd_let_go_valid, cmd_fall_valid;
    LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
-   LevelTile_T player_above_tile, player_below_tile;
+   LevelTile_T dig_above_tile, player_below_tile;
     
    if(player1_data->motion_state == MOTION_STATE_NOT_MOVING)
    {
-      player1_data->next_grid_p.x = player1_data->grid_p.x;
-      player1_data->next_grid_p.y = player1_data->grid_p.y;
-
-      desired_p.x = player1_data->grid_p.x;
-      desired_p.y = player1_data->grid_p.y;
-
-      if(player1_data->input_flags[e_pi_move_up]    == 1)
-      {
-         desired_p.y --;
-      }
-      if(player1_data->input_flags[e_pi_move_down]  == 1)
-      {
-         desired_p.y ++;
-      }
-      if(player1_data->input_flags[e_pi_move_left]  == 1)
-      {
-         desired_p.x --;
-      }
-      if(player1_data->input_flags[e_pi_move_right] == 1)
-      {
-         desired_p.x ++;
-      }
-      if(player1_data->input_flags[e_pi_dig_left]   == 1)
-      {
-         wants_to_dig = 1;
-         desired_dig_p.x = player1_data->grid_p.x - 1;
-         desired_dig_p.y = player1_data->grid_p.y + 1;
-      }
-      else if(player1_data->input_flags[e_pi_dig_right]  == 1)
-      {
-         wants_to_dig = 1;
-         desired_dig_p.x = player1_data->grid_p.x + 1;
-         desired_dig_p.y = player1_data->grid_p.y + 1;
-      }
-      else
-      {
-         wants_to_dig = 0;
-      }
+      // Check for valid commands/behavoirs
+      
+      cmd_dig_left_valid   = 0;
+      cmd_dig_right_valid  = 0;
+      cmd_move_left_valid  = 0;
+      cmd_move_right_valid = 0;
+      cmd_move_up_valid    = 0;
+      cmd_move_down_valid  = 0;
+      cmd_let_go_valid     = 0;
+      cmd_fall_valid       = 0;
+      
 
       Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
       Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
-      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_above_tile);
-      Level_QueryTile(level, POS_SPLIT(desired_p, 0, 0),             &player_desired_tile);
 
-      if(player_current_tile.gold_index >= 0)
+
+      if(player_current_tile.gold_index >= 0) // Remove Gold if on Gold
       {
          Level_RemoveGold(level, player_current_tile.gold_index);
       }
 
-
-
-      if(wants_to_dig == 1)
-      {
-         Level_QueryTile(level, POS_SPLIT(desired_dig_p, 0, 0), &dig_desired_tile);
-      }
-
       if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling
       {
-         player1_data->next_grid_p.y ++;
-         player1_data->motion_state = MOTION_STATE_FALLING;
+         cmd_fall_valid = 1;
       }
-      else if(wants_to_dig == 1 && dig_desired_tile.terrain_type == TMAP_TILE_DIRT)
+      if(player1_data->input_flags[e_pi_dig_left] == 1) // Dig Left
       {
-         player1_data->motion_state = MOTION_STATE_DIGGING;
-         Level_AddDigSpot(level, desired_dig_p.x, desired_dig_p.y);
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 1), &dig_desired_tile);
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 0), &dig_above_tile);
+         if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
+            dig_above_tile.terrain_type == TMAP_TILE_AIR)
+         {
+            cmd_dig_left_valid = 1;
+         }
       }
-      else if(IsTerrainPassable(&player_current_tile, &player_desired_tile) && 
-            (
-             (player_current_tile.terrain_type == TMAP_TILE_LADDER && player1_data->grid_p.y > desired_p.y) ||
-             (player1_data->grid_p.y < desired_p.y)
-            )) // Ladders and Bars
+      if(player1_data->input_flags[e_pi_dig_right] == 1) // Dig Right
       {
-         //player1_data->next_grid_p.x = desired_p.x;
-         player1_data->next_grid_p.y = desired_p.y; 
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 1), &dig_desired_tile);
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 0), &dig_above_tile);
+         if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
+            dig_above_tile.terrain_type == TMAP_TILE_AIR)
+         {
+            cmd_dig_right_valid = 1;
+         }
       }
-      else if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1) // Horizontal Movment
+      if(player1_data->input_flags[e_pi_move_left] == 1) // Move Left
       {
-         player1_data->next_grid_p.x = desired_p.x;
-         //player1_data->next_grid_p.y = desired_p.y;
-         player1_data->motion_state = MOTION_STATE_MOVING;
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 0), &player_desired_tile);
+         if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
+         {
+            cmd_move_left_valid = 1;
+         }
+      }
+      if(player1_data->input_flags[e_pi_move_right] == 1) // Move Right
+      {
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 0), &player_desired_tile);
+         if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
+         {
+            cmd_move_right_valid = 1;
+         }
+      }
+      if(player1_data->input_flags[e_pi_move_up] == 1) // Climb Up
+      {
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_desired_tile);
+         if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1 &&
+            player_current_tile.terrain_type == TMAP_TILE_LADDER)
+         {
+            cmd_move_up_valid = 1;
+         }
+      }
+      if(player1_data->input_flags[e_pi_move_down] == 1) // Climb Down or Fall
+      {
+         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, 1), &player_desired_tile);
+         if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
+         {
+            if(player_current_tile.terrain_type == TMAP_TILE_BAR)
+            {
+               cmd_let_go_valid = 1;
+            }
+            else
+            {
+               cmd_move_down_valid = 1;
+            }
+         }
       }
 
-      if(player1_data->grid_p.x != player1_data->next_grid_p.x || 
-         player1_data->grid_p.y != player1_data->next_grid_p.y)
+      // Compute Next Position and state based on commands
+      // Order
+      // 1. Falling
+      // 2. Digging
+      // 3. Climbing
+      // 4. Letting Go
+      // 5. Horisontal Movement
+
+      if(cmd_fall_valid == 1)
+      {
+         player1_data->motion_state = MOTION_STATE_FALLING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
+      }
+      else if(cmd_dig_left_valid == 1 && cmd_dig_right_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_DIGGING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y;
+
+         Level_AddDigSpot(level, player1_data->grid_p.x - 1, 
+                                 player1_data->grid_p.y + 1);
+      }
+      else if(cmd_dig_right_valid == 1 && cmd_dig_left_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_DIGGING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y;
+
+         Level_AddDigSpot(level, player1_data->grid_p.x + 1, 
+                                 player1_data->grid_p.y + 1);
+      }
+      else if(cmd_move_up_valid == 1 && cmd_move_down_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y - 1;
+      }
+      else if(cmd_move_down_valid == 1 && cmd_move_up_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
+      }
+      else if(cmd_let_go_valid == 1)
+      {
+         player1_data->motion_state = MOTION_STATE_FALLING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y + 1;
+      }
+      else if(cmd_move_left_valid == 1 && cmd_move_right_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x - 1;
+         player1_data->next_grid_p.y = player1_data->grid_p.y;
+      }
+      else if(cmd_move_right_valid == 1 && cmd_move_left_valid == 0)
+      {
+         player1_data->motion_state = MOTION_STATE_MOVING;
+         player1_data->next_grid_p.x = player1_data->grid_p.x + 1;
+         player1_data->next_grid_p.y = player1_data->grid_p.y;
+      }
+
+      if(player1_data->motion_state != MOTION_STATE_NOT_MOVING)
       {
          player1_data->move_timer = 0;
 
@@ -493,13 +558,13 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to)
 {
    int result;
-   if(to->terrain_type == TMAP_TILE_DIRT)
+   if(to->terrain_type != TMAP_TILE_DIRT && to->out_of_range == 0)
    {
-      result = 0;
+      result = 1;
    }
    else
    {
-      result = 1;
+      result = 0;
    }
    return result;
 }
@@ -508,7 +573,7 @@ static int IsTerrainFallable(LevelTile_T *  from, LevelTile_T *  to)
 {
    int result;
    if((to->terrain_type == TMAP_TILE_AIR || to->terrain_type == TMAP_TILE_BAR || to->has_hole == 1) && 
-      from->terrain_type != TMAP_TILE_LADDER && from->terrain_type != TMAP_TILE_BAR)
+      from->terrain_type != TMAP_TILE_LADDER && from->terrain_type != TMAP_TILE_BAR && to->out_of_range == 0)
    {
       result = 1;      
    }
