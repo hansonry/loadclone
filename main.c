@@ -25,6 +25,7 @@
 #define PLAYER_STATE_MOVING      1
 #define PLAYER_STATE_FALLING     2
 #define PLAYER_STATE_DIGGING     3
+#define PLAYER_STATE_DEATH       4
 
 
 #define TMAP_TILE_AIR    0
@@ -335,6 +336,17 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
    LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
    LevelTile_T dig_above_tile, player_below_tile;
     
+   Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
+   if(player1_data->player_state != PLAYER_STATE_DEATH)
+   {
+      if(player_current_tile.out_of_range == 1 || 
+         (player_current_tile.terrain_type == TMAP_TILE_DIRT && player_current_tile.has_hole == 0))
+      {
+         player1_data->player_state = PLAYER_STATE_DEATH;
+         // Dec Lifes Here?
+      }
+   }
+   
    if(player1_data->player_state == PLAYER_STATE_NOT_MOVING)
    {
       // Check for valid commands/behavoirs
@@ -349,7 +361,6 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       cmd_fall_valid       = 0;
       
 
-      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
       Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
 
 
@@ -512,6 +523,20 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          player1_data->grid_p.y = player1_data->next_grid_p.y;
       }
    }
+   else if(player1_data->player_state == PLAYER_STATE_DEATH)
+   {
+      if(player1_data->input_flags[e_pi_dig_left]   == 1 ||
+         player1_data->input_flags[e_pi_dig_right]  == 1 ||
+         player1_data->input_flags[e_pi_move_left]  == 1 ||
+         player1_data->input_flags[e_pi_move_right] == 1 ||
+         player1_data->input_flags[e_pi_move_up]    == 1 ||
+         player1_data->input_flags[e_pi_move_down]  == 1)
+      {
+         player1_data->player_state = PLAYER_STATE_NOT_MOVING;
+         player1_data->grid_p.x = level->start_spot.x;
+         player1_data->grid_p.y = level->start_spot.y;
+      }
+   }
    Level_Update(level, seconds);
 }
 
@@ -520,8 +545,12 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
    pos_t draw_loc;
    pos_t diff;
    float move_percent;
+   int show;
 
+   
    Level_Render(level, rend, t_palet);
+
+   show = 1;
    switch(player1_data->player_state)
    {
    case PLAYER_STATE_NOT_MOVING:
@@ -542,23 +571,32 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
                    (int)(diff.y * move_percent);
       break;
 
-   
+   case PLAYER_STATE_DEATH:
+      show = 0;
+      break;
    default:
       draw_loc.x = 0;
       draw_loc.y = 0;
       break;
    }
 
-
-   draw_at(rend, t_palet, IMGID_GUY, draw_loc.x, 
-                                     draw_loc.y); 
+   
+   if(show == 1)
+   {
+      draw_at(rend, t_palet, IMGID_GUY, draw_loc.x, 
+                                        draw_loc.y); 
+   }
  
 }
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to)
 {
    int result;
-   if(to->terrain_type != TMAP_TILE_DIRT && to->out_of_range == 0)
+   if(to->out_of_range == 0 && 
+     (
+       (to->terrain_type == TMAP_TILE_DIRT && to->has_hole == 1) || 
+       (to->terrain_type != TMAP_TILE_DIRT)
+     ))
    {
       result = 1;
    }
