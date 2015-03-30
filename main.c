@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
+#include "SDL2/SDL_ttf.h"
 
 #include "ArrayList.h"
 
@@ -165,11 +166,17 @@ int main(int args, char * argc[])
    float seconds;
 
    int i;
-   
 
+   // Font
+   TTF_Font * font;
+   SDL_Surface * f_surf;
+   SDL_Texture * f_text;
+   SDL_Color color;
+   SDL_Rect f_rect;
  
    player_data_t player1_data;
    Level_T level;
+   
 
    for(i = 0; i < e_pi_last; i++)
    {
@@ -185,6 +192,7 @@ int main(int args, char * argc[])
    
 
    SDL_Init(SDL_INIT_EVERYTHING);   
+   TTF_Init();
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
@@ -193,6 +201,23 @@ int main(int args, char * argc[])
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
    t_palet = load_texture(rend, "load.png");
+   
+   font = TTF_OpenFont("cnr.otf", 28);
+   if(font == NULL)
+   {
+      printf("Font Null\n");
+   }
+   color.r = 0xFF;
+   color.g = 0xFF;
+   color.b = 0xFF;
+   color.a = 0xFF;
+   f_surf = TTF_RenderText_Blended(font, "Test", color);
+   f_text = SDL_CreateTextureFromSurface(rend, f_surf);
+   SDL_FreeSurface(f_surf);
+   SDL_QueryTexture(f_text, NULL, NULL, &f_rect.w, &f_rect.h);
+   f_rect.x = 10;
+   f_rect.y = 10;
+
 
    prevTicks = SDL_GetTicks();
    
@@ -215,6 +240,7 @@ int main(int args, char * argc[])
       SDL_RenderClear( rend );
       
       handle_render(rend, t_palet, &level, &player1_data);
+      SDL_RenderCopy(rend, f_text, NULL, &f_rect);
       SDL_RenderPresent(rend);
    }
    
@@ -223,6 +249,10 @@ int main(int args, char * argc[])
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
    SDL_DestroyTexture(t_palet);
+
+   SDL_DestroyTexture(f_text);
+   TTF_CloseFont(font);
+
    SDL_Quit();
    
    
