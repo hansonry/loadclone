@@ -4,6 +4,7 @@
 #include "SDL2/SDL_ttf.h"
 
 #include "ArrayList.h"
+#include "FontText.h"
 
 #define TILE_WIDTH             32
 #define TILE_HEIGHT            32
@@ -169,10 +170,7 @@ int main(int args, char * argc[])
 
    // Font
    TTF_Font * font;
-   SDL_Surface * f_surf;
-   SDL_Texture * f_text;
-   SDL_Color color;
-   SDL_Rect f_rect;
+   FontText_T font_text;
  
    player_data_t player1_data;
    Level_T level;
@@ -207,16 +205,8 @@ int main(int args, char * argc[])
    {
       printf("Font Null\n");
    }
-   color.r = 0xFF;
-   color.g = 0xFF;
-   color.b = 0xFF;
-   color.a = 0xFF;
-   f_surf = TTF_RenderText_Blended(font, "Test", color);
-   f_text = SDL_CreateTextureFromSurface(rend, f_surf);
-   SDL_FreeSurface(f_surf);
-   SDL_QueryTexture(f_text, NULL, NULL, &f_rect.w, &f_rect.h);
-   f_rect.x = 10;
-   f_rect.y = 10;
+   FontText_Init(&font_text, font, rend);
+   FontText_SetString(&font_text, "Gold 3/6");
 
 
    prevTicks = SDL_GetTicks();
@@ -240,7 +230,7 @@ int main(int args, char * argc[])
       SDL_RenderClear( rend );
       
       handle_render(rend, t_palet, &level, &player1_data);
-      SDL_RenderCopy(rend, f_text, NULL, &f_rect);
+      FontText_Render(&font_text, 10, 10);
       SDL_RenderPresent(rend);
    }
    
@@ -250,7 +240,7 @@ int main(int args, char * argc[])
    SDL_DestroyWindow(window);
    SDL_DestroyTexture(t_palet);
 
-   SDL_DestroyTexture(f_text);
+   FontText_Destroy(&font_text);
    TTF_CloseFont(font);
 
    SDL_Quit();
