@@ -83,6 +83,7 @@ struct Level_S
    TerrainMap_T tmap;
    ArrayList_T  dig_list;
    ArrayList_T  gold_list;
+   ArrayList_T  gold_list_init;
    pos_t start_spot;
 };
 
@@ -118,6 +119,8 @@ static void Level_Destroy(Level_T * level);
 
 static void Level_Load(Level_T * level, const char * filename);
 
+static void Level_Restart(Level_T * level);
+
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet);
 
 static void Level_Update(Level_T * level, float seconds);
@@ -143,6 +146,7 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
 static int IsAllGoldColected(Level_T * level);
+static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text);
 
 static void CheckForExit(const SDL_Event *event, int * done);
 
@@ -152,7 +156,7 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
 
 static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
 
-static void handle_update(float seconds, Level_T * level, player_data_t * player1_data);
+static void handle_update(float seconds, Level_T * level, player_data_t * player1_data, FontText_T * gold_count_text);
 
 static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data);
 
@@ -170,7 +174,7 @@ int main(int args, char * argc[])
 
    // Font
    TTF_Font * font;
-   FontText_T font_text;
+   FontText_T gold_count_text;
  
    player_data_t player1_data;
    Level_T level;
@@ -205,8 +209,8 @@ int main(int args, char * argc[])
    {
       printf("Font Null\n");
    }
-   FontText_Init(&font_text, font, rend);
-   FontText_SetString(&font_text, "Gold 3/6");
+   FontText_Init(&gold_count_text, font, rend);
+   UpdateGoldCount(&level, &gold_count_text);
 
 
    prevTicks = SDL_GetTicks();
@@ -224,13 +228,13 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &level, &player1_data);
+      handle_update(seconds, &level, &player1_data, &gold_count_text);
       
       SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
       SDL_RenderClear( rend );
       
       handle_render(rend, t_palet, &level, &player1_data);
-      FontText_Render(&font_text, 10, 10);
+      FontText_Render(&gold_count_text, 10, 10);
       SDL_RenderPresent(rend);
    }
    
@@ -240,7 +244,7 @@ int main(int args, char * argc[])
    SDL_DestroyWindow(window);
    SDL_DestroyTexture(t_palet);
 
-   FontText_Destroy(&font_text);
+   FontText_Destroy(&gold_count_text);
    TTF_CloseFont(font);
 
    SDL_Quit();
@@ -350,7 +354,7 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
    SDL_RenderCopy(rend, text, &r_src, &r_dest);
 }
 
-static void handle_update(float seconds, Level_T * level, player_data_t * player1_data)
+static void handle_update(float seconds, Level_T * level, player_data_t * player1_data, FontText_T * gold_count_text)
 {
    int cmd_dig_left_valid, cmd_dig_right_valid;
    int cmd_move_left_valid, cmd_move_right_valid;
@@ -399,6 +403,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
       if(player_current_tile.gold_index >= 0) // Remove Gold if on Gold
       {
          Level_RemoveGold(level, player_current_tile.gold_index);
+         UpdateGoldCount(level, gold_count_text);
       }
 
       if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling
@@ -673,6 +678,16 @@ static int IsAllGoldColected(Level_T * level)
    return all_gold_colected;
 }
 
+static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
+{
+   size_t gold_left, gold_total;
+   char buffer[255];
+   (void)ArrayList_Get(&level->gold_list,      &gold_left,  NULL);
+   (void)ArrayList_Get(&level->gold_list_init, &gold_total, NULL);
+   sprintf(buffer, "Gold %i/%i", gold_left, gold_total);
+   FontText_SetString(gold_count_text, buffer);
+}
+
 // S TerrainMap
 
 
@@ -721,8 +736,9 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 static void Level_Init(Level_T * level)
 {
    TerrainMap_Init(&level->tmap, 10, 10);
-   ArrayList_Init(&level->dig_list, sizeof(DigSpot_T), 0);
-   ArrayList_Init(&level->gold_list, sizeof(Gold_T), 0);
+   ArrayList_Init(&level->dig_list,       sizeof(DigSpot_T), 0);
+   ArrayList_Init(&level->gold_list,      sizeof(Gold_T),    0);
+   ArrayList_Init(&level->gold_list_init, sizeof(Gold_T),    0);
    level->start_spot.x = 0;
    level->start_spot.y = 0;
 }
@@ -732,6 +748,7 @@ static void Level_Destroy(Level_T * level)
    TerrainMap_Destroy(&level->tmap);
    ArrayList_Destroy(&level->dig_list);
    ArrayList_Destroy(&level->gold_list);
+   ArrayList_Destroy(&level->gold_list_init);
 }
 
 static void Level_Load(Level_T * level, const char * filename)
@@ -741,6 +758,7 @@ static void Level_Load(Level_T * level, const char * filename)
    int w, h;
    TerrainMap_T * map;
    pos_t p;
+   Gold_T * gold;
 
    map = &level->tmap;
    fp = fopen(filename, "r");
@@ -773,7 +791,9 @@ static void Level_Load(Level_T * level, const char * filename)
             case 4:  map->data[index] = TMAP_TILE_BAR;    break;
             case 5:
                map->data[index] = TMAP_TILE_AIR;
-               Level_AddGold(level, p.x, p.y);
+               gold = ArrayList_Add(&level->gold_list_init, NULL);
+               gold->pos.x = p.x;
+               gold->pos.y = p.y;
                break;
             case 6: map->data[index] = TMAP_TILE_DOOR;    break;
             default: map->data[index] = TMAP_TILE_AIR;    break;
@@ -789,7 +809,17 @@ static void Level_Load(Level_T * level, const char * filename)
       }
 
       fclose(fp);
+      Level_Restart(level);
    }
+}
+
+static void Level_Restart(Level_T * level)
+{
+   size_t size;
+   Gold_T * gold;
+   gold = ArrayList_Get(&level->gold_list_init, &size, NULL);
+   ArrayList_Clear(&level->gold_list);
+   ArrayList_AddArray(&level->gold_list, gold, size);
 }
 
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
