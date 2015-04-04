@@ -1,0 +1,6 @@
+.bam
+*.o
+*.swp
+loadclone
+*.exe
+
