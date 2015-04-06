@@ -435,7 +435,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 1), &dig_desired_tile);
          Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 0), &dig_above_tile);
          if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
-            dig_above_tile.terrain_type == TMAP_TILE_AIR)
+            (dig_above_tile.terrain_type == TMAP_TILE_AIR || dig_above_tile.has_hole == 1))
          {
             cmd_dig_left_valid = 1;
          }
@@ -445,7 +445,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 1), &dig_desired_tile);
          Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 0), &dig_above_tile);
          if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
-            dig_above_tile.terrain_type == TMAP_TILE_AIR)
+            (dig_above_tile.terrain_type == TMAP_TILE_AIR || dig_above_tile.has_hole == 1))
          {
             cmd_dig_right_valid = 1;
          }
@@ -670,7 +670,7 @@ static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to)
 static int IsTerrainFallable(LevelTile_T *  from, LevelTile_T *  to)
 {
    int result;
-   if((to->terrain_type == TMAP_TILE_AIR || to->terrain_type == TMAP_TILE_BAR || to->has_hole == 1) && 
+   if((to->terrain_type == TMAP_TILE_AIR || to->terrain_type == TMAP_TILE_BAR || to->has_hole == 1 || to->terrain_type == TMAP_TILE_DOOR) && 
       from->terrain_type != TMAP_TILE_LADDER && from->terrain_type != TMAP_TILE_BAR && to->out_of_range == 0)
    {
       result = 1;      
