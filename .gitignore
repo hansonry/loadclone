@@ -5,4 +5,5 @@ loadclone
 *.exe
 *.obj
 *.manifest
+*.bundle
 
