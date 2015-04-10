@@ -704,7 +704,7 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
    char buffer[255];
    (void)ArrayList_Get(&level->gold_list,      &gold_left,  NULL);
    (void)ArrayList_Get(&level->gold_list_init, &gold_total, NULL);
-   sprintf(buffer, "Gold %i/%i", gold_left, gold_total);
+   sprintf(buffer, "Gold %i/%i", (int)gold_left, (int)gold_total);
    FontText_SetString(gold_count_text, buffer);
 }
 
@@ -779,6 +779,7 @@ static void Level_Load(Level_T * level, const char * filename)
    TerrainMap_T * map;
    pos_t p;
    Gold_T * gold;
+   size_t size;
 
    map = &level->tmap;
    fp = fopen(filename, "r");
@@ -794,9 +795,10 @@ static void Level_Load(Level_T * level, const char * filename)
       TerrainMap_Destroy(map);
 
       TerrainMap_Init(map, w, h);
+      size = w * h;
       index = 0;
       p.x = p.y = 0;
-      while(!feof(fp))
+      while(!feof(fp) && index < size)
       {
          fscanf(fp, "%i", &input);
          switch(input)
