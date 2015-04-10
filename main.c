@@ -26,6 +26,8 @@
 #include "ArrayList.h"
 #include "FontText.h"
 
+#include "ConfigLoader.h"
+
 #define TILE_WIDTH             32
 #define TILE_HEIGHT            32
 
@@ -56,6 +58,15 @@
 #define TMAP_TILE_LADDER 2
 #define TMAP_TILE_BAR    3
 #define TMAP_TILE_DOOR   4
+
+typedef struct GameSetting_S GameSettings_T;
+struct GameSetting_S
+{
+   int window_width;
+   int window_height;
+   int window_fullscreen; // boolean
+};
+
 
 typedef enum player_input_e player_input_t;
 enum player_input_e
@@ -198,7 +209,15 @@ int main(int args, char * argc[])
  
    player_data_t player1_data;
    Level_T level;
+
+   ConfigLoader_T loader;
+   GameSettings_T game_settings;
    
+   ConfigLoader_LoadFilename(&loader, "config.txt");
+   game_settings.window_width      = ConfigLoader_GetInt(&loader,     "window.width",      800);
+   game_settings.window_height     = ConfigLoader_GetInt(&loader,     "window.height",     600);
+   game_settings.window_fullscreen = ConfigLoader_GetBoolean(&loader, "window.fullscreen", 0);
+
 
    for(i = 0; i < e_pi_last; i++)
    {
@@ -218,7 +237,9 @@ int main(int args, char * argc[])
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
-                             800, 600, SDL_WINDOW_SHOWN);
+                             game_settings.window_width,
+                             game_settings.window_height,
+                             SDL_WINDOW_SHOWN | ((game_settings.window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
@@ -258,6 +279,8 @@ int main(int args, char * argc[])
       SDL_RenderPresent(rend);
    }
    
+   ConfigLoader_Destroy(&loader);
+
    Level_Destroy(&level); 
    
    SDL_DestroyRenderer(rend);
