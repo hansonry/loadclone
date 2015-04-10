@@ -3,4 +3,6 @@
 *.swp
 loadclone
 *.exe
+*.obj
+*.manifest
 
