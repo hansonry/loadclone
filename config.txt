@@ -2,3 +2,7 @@
 # window.height     : 1080
 # window.fullscreen : 1
 
+# background.color.red   : 0
+# background.color.green : 0
+# background.color.blue  : 0
+

@@ -18,3 +18,24 @@ You can dig holes in the ground but they refill. If you in the hole when it refo
 
 For right now controls are not reconfigureable
 
+## Configuration
+
+You can create a file called config.txt with the following settings:
+
+```
+# Window Width In Pixels:
+window.width      : 800
+# Window Height In Pixels:
+window.height     : 600
+# Fullscreen option 1 = fullscreen, 0 = Windowed
+window.fullscreen : 0
+
+# Background Red Color
+background.color.red   : 0
+# Background Green Color
+background.color.green : 0
+#Background Blue Color
+background.color.blue  : 0
+```
+
+

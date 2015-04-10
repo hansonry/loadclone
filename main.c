@@ -31,14 +31,15 @@
 #define TILE_WIDTH             32
 #define TILE_HEIGHT            32
 
+// y & x
 #define IMGID_BLOCK        0x0000
-#define IMGID_BROKENBLOCK  0x0001
-#define IMGID_LADDER       0x0002
-#define IMGID_GOLD         0x0100
-#define IMGID_GUY          0x0101
-#define IMGID_BAR          0x0102
-#define IMGID_DOORCLOSE    0x0200
-#define IMGID_DOOROPEN     0x0201
+#define IMGID_BROKENBLOCK  0x0302
+#define IMGID_LADDER       0x0102
+#define IMGID_GOLD         0x0502
+#define IMGID_GUY          0x0000
+#define IMGID_BAR          0x0002
+#define IMGID_DOORCLOSE    0x0003
+#define IMGID_DOOROPEN     0x0100
 
 #define MOVE_TIMEOUT             0.5f
 #define FALL_TIMEOUT             0.3f
@@ -65,6 +66,9 @@ struct GameSetting_S
    int window_width;
    int window_height;
    int window_fullscreen; // boolean
+   int background_color_r;
+   int background_color_g;
+   int background_color_b;
 };
 
 
@@ -152,7 +156,7 @@ static void Level_Load(Level_T * level, const char * filename);
 
 static void Level_Restart(Level_T * level);
 
-static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet);
+static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain);
 
 static void Level_Update(Level_T * level, float seconds);
 
@@ -189,14 +193,19 @@ static void handle_input(const SDL_Event * event, int * done, int * player_input
 
 static void handle_update(float seconds, Level_T * level, player_data_t * player1_data, FontText_T * gold_count_text);
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data);
+static void handle_render(SDL_Renderer * rend, 
+                          SDL_Texture * t_terrain, 
+                          SDL_Texture * t_character,
+                          Level_T * level, 
+                          player_data_t * player1_data);
 
 int main(int args, char * argc[])
 {
    SDL_Window  * window;
    SDL_Renderer * rend;   
    SDL_Event event;
-   SDL_Texture * t_palet;
+   SDL_Texture * t_terrain;
+   SDL_Texture * t_character;
    int done;
    int prevTicks, diffTicks, nowTicks;
    float seconds;
@@ -214,9 +223,12 @@ int main(int args, char * argc[])
    GameSettings_T game_settings;
    
    ConfigLoader_LoadFilename(&loader, "config.txt");
-   game_settings.window_width      = ConfigLoader_GetInt(&loader,     "window.width",      800);
-   game_settings.window_height     = ConfigLoader_GetInt(&loader,     "window.height",     600);
-   game_settings.window_fullscreen = ConfigLoader_GetBoolean(&loader, "window.fullscreen", 0);
+   game_settings.window_width       = ConfigLoader_GetInt(&loader,     "window.width",           800);
+   game_settings.window_height      = ConfigLoader_GetInt(&loader,     "window.height",          600);
+   game_settings.window_fullscreen  = ConfigLoader_GetBoolean(&loader, "window.fullscreen",      0);
+   game_settings.background_color_r = ConfigLoader_GetInt(&loader,     "background.color.red",   0);
+   game_settings.background_color_g = ConfigLoader_GetInt(&loader,     "background.color.green", 0);
+   game_settings.background_color_b = ConfigLoader_GetInt(&loader,     "background.color.blue",  0);
 
 
    for(i = 0; i < e_pi_last; i++)
@@ -243,7 +255,8 @@ int main(int args, char * argc[])
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
-   t_palet = load_texture(rend, "load.png");
+   t_terrain = load_texture(rend, "terrain.png");
+   t_character = load_texture(rend, "character.png");
    
    font = TTF_OpenFont("cnr.otf", 28);
    if(font == NULL)
@@ -271,10 +284,13 @@ int main(int args, char * argc[])
       
       handle_update(seconds, &level, &player1_data, &gold_count_text);
       
-      SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, 0xFF);
+      SDL_SetRenderDrawColor(rend, 
+                             game_settings.background_color_r, 
+                             game_settings.background_color_g,
+                             game_settings.background_color_b, 0xFF);
       SDL_RenderClear( rend );
       
-      handle_render(rend, t_palet, &level, &player1_data);
+      handle_render(rend, t_terrain, t_character, &level, &player1_data);
       FontText_Render(&gold_count_text, 10, 10);
       SDL_RenderPresent(rend);
    }
@@ -285,7 +301,8 @@ int main(int args, char * argc[])
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
-   SDL_DestroyTexture(t_palet);
+   SDL_DestroyTexture(t_terrain);
+   SDL_DestroyTexture(t_character);
 
    FontText_Destroy(&gold_count_text);
    TTF_CloseFont(font);
@@ -620,7 +637,11 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
    Level_Update(level, seconds);
 }
 
-static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * level, player_data_t * player1_data)
+static void handle_render(SDL_Renderer * rend, 
+                          SDL_Texture * t_terrain, 
+                          SDL_Texture * t_character,
+                          Level_T * level, 
+                          player_data_t * player1_data)
 {
    pos_t draw_loc;
    pos_t diff;
@@ -628,7 +649,7 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
    int show;
 
    
-   Level_Render(level, rend, t_palet);
+   Level_Render(level, rend, t_terrain);
 
    show = 1;
    switch(player1_data->player_state)
@@ -666,8 +687,8 @@ static void handle_render(SDL_Renderer * rend, SDL_Texture * t_palet, Level_T * 
    
    if(show == 1)
    {
-      draw_at(rend, t_palet, IMGID_GUY, draw_loc.x, 
-                                        draw_loc.y); 
+      draw_at(rend, t_character, IMGID_GUY, draw_loc.x, 
+                                            draw_loc.y); 
    }
  
 }
@@ -867,7 +888,7 @@ static void Level_Restart(Level_T * level)
    ArrayList_AddArray(&level->gold_list, gold, size);
 }
 
-static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_palet)
+static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
 {
    DigSpot_T * dig_spot;
    int index;
@@ -881,7 +902,7 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
 
    all_gold_colected = IsAllGoldColected(level);
 
-   //TerrainMap_Render(&level->tmap, rend, t_palet);
+   //TerrainMap_Render(&level->tmap, rend, t_terrain);
 
    map = &level->tmap;
    p.x = 0;
@@ -897,27 +918,27 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
             dig_spot = Level_GetDigSpot(level, p.x, p.y);
             if(dig_spot == NULL)
             {
-               draw_at(rend, t_palet, IMGID_BLOCK, c.x, c.y);
+               draw_at(rend, t_terrain, IMGID_BLOCK, c.x, c.y);
             }
             else
             {
-               draw_at(rend, t_palet, IMGID_BROKENBLOCK, c.x, c.y);
+               draw_at(rend, t_terrain, IMGID_BROKENBLOCK, c.x, c.y);
             }
             break;
          case TMAP_TILE_LADDER:
-            draw_at(rend, t_palet, IMGID_LADDER, c.x, c.y);
+            draw_at(rend, t_terrain, IMGID_LADDER, c.x, c.y);
             break;
          case TMAP_TILE_BAR:
-            draw_at(rend, t_palet, IMGID_BAR, c.x, c.y);
+            draw_at(rend, t_terrain, IMGID_BAR, c.x, c.y);
             break;
          case TMAP_TILE_DOOR:
             if(all_gold_colected == 1)
             {
-               draw_at(rend, t_palet, IMGID_DOOROPEN, c.x, c.y);
+               draw_at(rend, t_terrain, IMGID_DOOROPEN, c.x, c.y);
             }
             else
             {
-               draw_at(rend, t_palet, IMGID_DOORCLOSE, c.x, c.y);
+               draw_at(rend, t_terrain, IMGID_DOORCLOSE, c.x, c.y);
             }
             break;
       }
@@ -939,7 +960,7 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_p
    {
       c.x = gold[i].pos.x * TILE_WIDTH;
       c.y = gold[i].pos.y * TILE_HEIGHT;
-      draw_at(rend, t_palet, IMGID_GOLD, c.x, c.y);
+      draw_at(rend, t_terrain, IMGID_GOLD, c.x, c.y);
    }
    
 }
