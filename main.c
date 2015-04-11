@@ -79,8 +79,8 @@ struct GameSetting_S
 };
 
 
-typedef enum player_input_e player_input_t;
-enum player_input_e
+typedef enum PlayerInput_E PlayerInput_T;
+enum PlayerInput_E
 {
    e_pi_move_up,
    e_pi_move_down,
@@ -89,6 +89,13 @@ enum player_input_e
    e_pi_dig_left,
    e_pi_dig_right,
    e_pi_last
+};
+
+typedef enum GameInput_E GameInput_T;
+enum GameInput_E
+{
+   e_gi_restart_level,
+   e_gi_last
 };
 
 typedef struct pos_s pos_t;
@@ -208,9 +215,9 @@ static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
 
 static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, int y);
 
-static void handle_input(const SDL_Event * event, int * done, int * player_input_flags);
+static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags);
 
-static void handle_update(float seconds, Level_T * level, player_data_t * player1_data, FontText_T * gold_count_text);
+static void handle_update(float seconds, Level_T * level, int * game_input_flags,  player_data_t * player1_data, FontText_T * gold_count_text);
 
 static void handle_render(SDL_Renderer * rend, 
                           SDL_Texture * t_terrain, 
@@ -230,6 +237,7 @@ int main(int args, char * argc[])
    float seconds;
 
    int i;
+   int game_input_flags[e_gi_last];
 
    // Font
    TTF_Font * font;
@@ -301,7 +309,7 @@ int main(int args, char * argc[])
    {
       while(SDL_PollEvent(&event))
       {
-         handle_input(&event, &done, player1_data.input_flags);
+         handle_input(&event, &done, game_input_flags, player1_data.input_flags);
       }
       
       nowTicks = SDL_GetTicks();
@@ -309,7 +317,7 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &level, &player1_data, &gold_count_text);
+      handle_update(seconds, &level, game_input_flags, &player1_data, &gold_count_text);
       
       SDL_SetRenderDrawColor(rend, 
                              game_settings.background_color_r, 
@@ -358,45 +366,63 @@ static void CheckForExit(const SDL_Event *event, int * done)
 }
 
 
-static void handle_input(const SDL_Event * event, int * done, int * player_input_flags)
+static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags)
 {
-   player_input_t key;
+   PlayerInput_T pkey;
+   GameInput_T gkey;
    CheckForExit(event, done);
 
    if(event->key.keysym.sym == SDLK_KP_8)
    {
-      key = e_pi_move_up;
+      pkey = e_pi_move_up;
    }
    else if(event->key.keysym.sym == SDLK_KP_5)
    {
-      key = e_pi_move_down;
+      pkey = e_pi_move_down;
    }
    else if(event->key.keysym.sym == SDLK_KP_4)
    {
-      key = e_pi_move_left;
+      pkey = e_pi_move_left;
    }
    else if(event->key.keysym.sym == SDLK_KP_6)
    {
-      key = e_pi_move_right;
+      pkey = e_pi_move_right;
    }
    else if(event->key.keysym.sym == SDLK_KP_7)
    {
-      key = e_pi_dig_left;
+      pkey = e_pi_dig_left;
    }
    else if(event->key.keysym.sym == SDLK_KP_9)
    {
-      key = e_pi_dig_right;
+      pkey = e_pi_dig_right;
    }
    else
    {
-      key = e_pi_last;
+      pkey = e_pi_last;
    }
 
-   if(key != e_pi_last)
+   if(pkey != e_pi_last)
    {
-      if(event->type == SDL_KEYDOWN) player_input_flags[key] = 1;
-      if(event->type == SDL_KEYUP)   player_input_flags[key] = 0;
+      if(event->type == SDL_KEYDOWN) player_input_flags[pkey] = 1;
+      if(event->type == SDL_KEYUP)   player_input_flags[pkey] = 0;
    }
+
+   if(event->key.keysym.sym == SDLK_r)
+   {
+      gkey = e_gi_restart_level;
+   }
+   else
+   {
+      gkey = e_gi_last;
+   }
+
+   if(gkey != e_gi_last)
+   {
+      if(event->type == SDL_KEYDOWN) game_input_flags[gkey] = 1;
+      if(event->type == SDL_KEYUP)   game_input_flags[gkey] = 0;
+   }
+
+
 
 }
 
@@ -441,7 +467,11 @@ static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, i
    SDL_RenderCopy(rend, text, &r_src, &r_dest);
 }
 
-static void handle_update(float seconds, Level_T * level, player_data_t * player1_data, FontText_T * gold_count_text)
+static void handle_update(float seconds, 
+                          Level_T * level, 
+                          int * game_input_flags, 
+                          player_data_t * player1_data, 
+                          FontText_T * gold_count_text)
 {
    int cmd_dig_left_valid, cmd_dig_right_valid;
    int cmd_move_left_valid, cmd_move_right_valid;
@@ -449,6 +479,7 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
    LevelTile_T player_current_tile, player_desired_tile, dig_desired_tile;
    LevelTile_T dig_above_tile, player_below_tile;
    int all_gold_colected;
+   static int restart_key_prev = 0;
     
    Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
    all_gold_colected = IsAllGoldColected(level);
@@ -659,8 +690,17 @@ static void handle_update(float seconds, Level_T * level, player_data_t * player
          player1_data->player_state = PLAYER_STATE_NOT_MOVING;
          player1_data->grid_p.x = level->start_spot.x;
          player1_data->grid_p.y = level->start_spot.y;
+         //printf("ComeAlive!\n");
       }
    }
+
+   if(game_input_flags[e_gi_restart_level] == 0 && restart_key_prev == 1)
+   {
+      Level_Restart(level);
+      player1_data->player_state = PLAYER_STATE_DEATH;
+      UpdateGoldCount(level, gold_count_text);
+   }
+   restart_key_prev = game_input_flags[e_gi_restart_level];
    Level_Update(level, seconds);
 }
 
@@ -913,6 +953,8 @@ static void Level_Restart(Level_T * level)
    gold = ArrayList_Get(&level->gold_list_init, &size, NULL);
    ArrayList_Clear(&level->gold_list);
    ArrayList_AddArray(&level->gold_list, gold, size);
+   ArrayList_Clear(&level->dig_list);
+
 }
 
 static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y)
