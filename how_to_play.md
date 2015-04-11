@@ -36,6 +36,13 @@ background.color.red   : 0
 background.color.green : 0
 #Background Blue Color
 background.color.blue  : 0
+
+# Text Red Color
+foreground.color.red   : 255
+# Text Green Color
+foreground.color.green : 255
+# Text Blue Color
+foreground.color.blue  : 255
 ```
 
 

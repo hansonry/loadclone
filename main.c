@@ -69,6 +69,9 @@ struct GameSetting_S
    int background_color_r;
    int background_color_g;
    int background_color_b;
+   int foreground_color_r;
+   int foreground_color_g;
+   int foreground_color_b;
 };
 
 
@@ -229,6 +232,9 @@ int main(int args, char * argc[])
    game_settings.background_color_r = ConfigLoader_GetInt(&loader,     "background.color.red",   0);
    game_settings.background_color_g = ConfigLoader_GetInt(&loader,     "background.color.green", 0);
    game_settings.background_color_b = ConfigLoader_GetInt(&loader,     "background.color.blue",  0);
+   game_settings.foreground_color_r = ConfigLoader_GetInt(&loader,     "foreground.color.red",   255);
+   game_settings.foreground_color_g = ConfigLoader_GetInt(&loader,     "foreground.color.green", 255);
+   game_settings.foreground_color_b = ConfigLoader_GetInt(&loader,     "foreground.color.blue",  255);
 
 
    for(i = 0; i < e_pi_last; i++)
@@ -264,6 +270,11 @@ int main(int args, char * argc[])
       printf("Font Null\n");
    }
    FontText_Init(&gold_count_text, font, rend);
+   FontText_SetColor(&gold_count_text,
+                     game_settings.foreground_color_r,
+                     game_settings.foreground_color_g,
+                     game_settings.foreground_color_b, 0xFF);
+
    UpdateGoldCount(&level, &gold_count_text);
 
 

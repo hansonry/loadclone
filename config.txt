@@ -1,8 +1,13 @@
-# window.width      : 1920
-# window.height     : 1080
-# window.fullscreen : 1
+# window.width      : 800
+# window.height     : 600
+# window.fullscreen : 0
 
 # background.color.red   : 0
 # background.color.green : 0
 # background.color.blue  : 0
+
+
+# foreground.color.red   : 255
+# foreground.color.green : 255
+# foreground.color.blue  : 255
 
