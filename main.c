@@ -41,8 +41,8 @@
 #define IMGID_DOORCLOSE    0x0003
 #define IMGID_DOOROPEN     0x0100
 
-#define MOVE_TIMEOUT             0.5f
-#define FALL_TIMEOUT             0.3f
+#define MOVE_TIMEOUT             0.3f
+#define FALL_TIMEOUT             0.1f
 #define DIG_TIMEOUT              0.5f
 #define HOLE_TIMEOUT             5.0f
 
