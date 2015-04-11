@@ -4,13 +4,11 @@
 
 ## Up and Comming
 
-* Mask digging to support multiple diggable ground tiles
-* Break up Map tiles and charater images
-* Animation of Charater
 * Level List
-* Restart Level Key
-* Scrolling Map Support
 * Life Count
+* Animation of Charater
+* Scrolling Map Support
+* Level Timer
 
 ## Long Term and Large Features
 
@@ -19,5 +17,12 @@
 * Reconfigurable Controls
 * Local Multiplayer
 * Network Multiplayer
+
+
+## Completed
+
+* Dig Tile Animation
+* Restart Level Key
+* Break up Map tiles and charater images
 
 
