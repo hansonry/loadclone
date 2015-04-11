@@ -32,19 +32,23 @@
 #define TILE_HEIGHT            32
 
 // y & x
-#define IMGID_BLOCK        0x0000
-#define IMGID_BROKENBLOCK  0x0302
-#define IMGID_LADDER       0x0102
-#define IMGID_GOLD         0x0502
-#define IMGID_GUY          0x0000
-#define IMGID_BAR          0x0002
-#define IMGID_DOORCLOSE    0x0003
-#define IMGID_DOOROPEN     0x0100
+#define IMGID_BLOCK          0x0000
+#define IMGID_BROKENBLOCK_0  0x0300
+#define IMGID_BROKENBLOCK_1  0x0301
+#define IMGID_BROKENBLOCK_2  0x0302
+#define IMGID_LADDER         0x0102
+#define IMGID_GOLD           0x0502
+#define IMGID_GUY            0x0000
+#define IMGID_BAR            0x0002
+#define IMGID_DOORCLOSE      0x0003
+#define IMGID_DOOROPEN       0x0100
 
 #define MOVE_TIMEOUT             0.3f
 #define FALL_TIMEOUT             0.1f
 #define DIG_TIMEOUT              0.5f
 #define HOLE_TIMEOUT             5.0f
+#define DIG_SPOT_DELATA_FRAME_TIMEOUT 0.1f
+#define DIG_SPOT_FRAME_COUNT     3
 
 #define PLAYER_STATE_NOT_MOVING  0
 #define PLAYER_STATE_MOVING      1
@@ -132,11 +136,22 @@ struct Gold_S
    pos_t pos;
 };
 
+typedef enum DigSpot_State_E DigSpot_State_T;
+enum DigSpot_State_E
+{
+   e_dss_close,
+   e_dss_opening,
+   e_dss_open,
+   e_dss_closing
+};
+
 typedef struct DigSpot_S DigSpot_T;
 struct DigSpot_S
 {
    pos_t pos;
    float timer;
+   DigSpot_State_T state;
+   int frame;
 };
 
 typedef struct LevelTile_S LevelTile_T;
@@ -159,6 +174,7 @@ static void Level_Load(Level_T * level, const char * filename);
 
 static void Level_Restart(Level_T * level);
 
+static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y);
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain);
 
 static void Level_Update(Level_T * level, float seconds);
@@ -899,6 +915,43 @@ static void Level_Restart(Level_T * level)
    ArrayList_AddArray(&level->gold_list, gold, size);
 }
 
+static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y)
+{
+   int show;
+   int tile;
+   if(dig_spot->state == e_dss_opening)
+   {
+      switch(dig_spot->frame)
+      {
+         case 0:  show = 1; tile = IMGID_BROKENBLOCK_0; break;
+         case 1:  show = 1; tile = IMGID_BROKENBLOCK_1; break;
+         case 2:  show = 1; tile = IMGID_BROKENBLOCK_2; break;
+         default: show = 0; tile = 0xFFFF;              break;
+      }
+   }
+   else if(dig_spot->state == e_dss_open)
+   {
+      show = 0;
+      tile = 0xFFF;
+   }
+   else if(dig_spot->state == e_dss_closing)
+   {
+      switch(dig_spot->frame)
+      {
+         case 0:  show = 1; tile = IMGID_BROKENBLOCK_2; break;
+         case 1:  show = 1; tile = IMGID_BROKENBLOCK_1; break;
+         case 2:  show = 1; tile = IMGID_BROKENBLOCK_0; break;
+         default: show = 0; tile = 0xFFFF;              break;
+      }
+   }
+
+   if(show == 1)
+   {
+      draw_at(rend, t_terrain, tile, x, y);
+   }
+
+}
+
 static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
 {
    DigSpot_T * dig_spot;
@@ -912,8 +965,6 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_t
 
 
    all_gold_colected = IsAllGoldColected(level);
-
-   //TerrainMap_Render(&level->tmap, rend, t_terrain);
 
    map = &level->tmap;
    p.x = 0;
@@ -933,7 +984,7 @@ static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_t
             }
             else
             {
-               draw_at(rend, t_terrain, IMGID_BROKENBLOCK, c.x, c.y);
+               Level_Render_DigSpot(rend, t_terrain, dig_spot, c.x, c.y);
             }
             break;
          case TMAP_TILE_LADDER:
@@ -988,6 +1039,42 @@ static void Level_Update(Level_T * level, float seconds)
    for(i = 0; i < size; i++)
    {
       dig_spot[i].timer += seconds;
+      if(dig_spot[i].state == e_dss_opening)
+      {
+         if(dig_spot[i].timer >= DIG_SPOT_DELATA_FRAME_TIMEOUT)
+         {
+            dig_spot[i].frame ++;
+            dig_spot[i].timer -= DIG_SPOT_DELATA_FRAME_TIMEOUT;
+         }
+
+         if(dig_spot[i].frame >= DIG_SPOT_FRAME_COUNT)
+         {
+            dig_spot[i].state = e_dss_open;
+         }
+      }
+      else if(dig_spot[i].state == e_dss_open)
+      {
+         if(dig_spot[i].timer >= HOLE_TIMEOUT)
+         {
+            dig_spot[i].frame = 0;
+            dig_spot[i].timer -= HOLE_TIMEOUT;
+            dig_spot[i].state = e_dss_closing;
+         }
+      }
+      else if(dig_spot[i].state == e_dss_closing)
+      {
+         if(dig_spot[i].timer >= DIG_SPOT_DELATA_FRAME_TIMEOUT)
+         {
+            dig_spot[i].frame ++;
+            dig_spot[i].timer -= DIG_SPOT_DELATA_FRAME_TIMEOUT;
+         }
+
+         if(dig_spot[i].frame >= DIG_SPOT_FRAME_COUNT)
+         {
+            dig_spot[i].state = e_dss_close;
+         }
+      }
+
    }
 
    // Remove spots
@@ -995,7 +1082,7 @@ static void Level_Update(Level_T * level, float seconds)
    // Iterate backward so that the removes don't effect the index
    for(i = size - 1; i < size; i--)
    {
-      if(dig_spot[i].timer >= HOLE_TIMEOUT)
+      if(dig_spot[i].state == e_dss_close)
       {
          ArrayList_Remove(&level->dig_list, i);
       }
@@ -1010,6 +1097,8 @@ static void Level_AddDigSpot(Level_T * level, int x, int y)
    dig_spot->pos.x = x;
    dig_spot->pos.y = y;
    dig_spot->timer = 0;
+   dig_spot->state = e_dss_opening;
+   dig_spot->frame = 0;
 }
 
 static void Level_AddGold(Level_T * level, int x, int y)
