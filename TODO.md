@@ -4,11 +4,11 @@
 
 ## Up and Comming
 
-* Level List
 * Life Count
 * Animation of Charater
 * Scrolling Map Support
 * Level Timer
+* Figure out a better way to work Level Lists
 
 ## Long Term and Large Features
 
@@ -21,6 +21,7 @@
 
 ## Completed
 
+* Level List
 * Dig Tile Animation
 * Restart Level Key
 * Break up Map tiles and charater images
