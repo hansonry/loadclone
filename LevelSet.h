@@ -17,7 +17,7 @@ void LevelSet_Load(LevelSet_T * levelset, const char * filename);
 
 Level_T * LevelSet_GetAll(LevelSet_T * levelset, size_t * size);
 
-
+Level_T * LevelSet_GetLevel(LevelSet_T * levelset, size_t index);
 
 
 

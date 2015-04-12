@@ -475,6 +475,19 @@ int Level_GetGoldCount(Level_T * level, int * level_total)
    return (int)gold_left;
 }
 
+void Level_GetStartSpot(Level_T * level, int * x, int * y)
+{
+   if(x != NULL)
+   {
+      (*x) = level->start_spot.x;
+   }
+
+   if(y != NULL)
+   {
+      (*y) = level->start_spot.y;
+   }
+}
+
 // E Level
 
 

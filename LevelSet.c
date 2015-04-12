@@ -107,3 +107,19 @@ Level_T * LevelSet_GetAll(LevelSet_T * levelset, size_t * size)
 
 
 
+Level_T * LevelSet_GetLevel(LevelSet_T * levelset, size_t index)
+{
+   Level_T * result, * levels;
+   size_t size;
+   levels = ArrayList_Get(&levelset->level_list, &size, NULL);
+   if(index < size)
+   {
+      result = &levels[index];
+   }
+   else
+   {
+      result = NULL;
+   }
+   return result;
+}
+

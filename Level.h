@@ -116,6 +116,7 @@ void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile);
 
 int Level_GetGoldCount(Level_T * level, int * level_total);
 
+void Level_GetStartSpot(Level_T * level, int * x, int * y);
 
 #endif // __LEVEL_H__
 

@@ -90,22 +90,16 @@ struct PlayerData_S
    float move_timeout;
 };
 
-
-typedef struct GameData_S GameData_T;
-struct GameData_S
+typedef struct GameLevelData_S GameLevelData_T;
+struct GameLevelData_S
 {
+   int level_index;
    LevelSet_T * levelset;
    Level_T * level;
-   PlayerData_T * player;
-   int current_level;
-   
+
 };
 
-static void GameData_Init(GameData_T * gamedata, LevelSet_T * levelset, PlayerData_T * player);
-
-static void GameData_SetLevelSet(GameData_T * gamedata, LevelSet_T * levelset);
-static void GameData_SetLevel(GameData_T * gamedata, int level);
-static void GameData_NextLevel(GameData_T * gamedata);
+static int Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
@@ -117,7 +111,7 @@ static void CheckForExit(const SDL_Event *event, int * done);
 
 static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags);
 
-static void handle_update(float seconds, Level_T * level, int * game_input_flags,  PlayerData_T * player1_data, FontText_T * gold_count_text);
+static void handle_update(float seconds, GameLevelData_T * game_level_data, int * game_input_flags,  PlayerData_T * player1_data, FontText_T * gold_count_text);
 
 static void handle_render(SDL_Renderer * rend, 
                           SDL_Texture * t_terrain, 
@@ -145,7 +139,7 @@ int main(int args, char * argc[])
  
    PlayerData_T player1_data;
    LevelSet_T levelset;
-   GameData_T gamedata;
+   GameLevelData_T game_level_data;
 
    ConfigLoader_T loader;
    GameSettings_T game_settings;
@@ -173,8 +167,13 @@ int main(int args, char * argc[])
    
    //Level_Init(&level);
    //Level_Load(&level, "testmap.txt");
-   GameData_Init(&gamedata, &levelset, &player1_data);
+   game_level_data.level = NULL;
+   game_level_data.levelset = &levelset;
+   game_level_data.level_index = 0;
 
+   game_level_data.level = LevelSet_GetLevel(game_level_data.levelset, game_level_data.level_index);
+   Level_SetPlayerAtStart(game_level_data.level, &player1_data);   
+   player1_data.player_state = PLAYER_STATE_NOT_MOVING;
    
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -202,7 +201,7 @@ int main(int args, char * argc[])
                      game_settings.foreground_color_g,
                      game_settings.foreground_color_b, 0xFF);
 
-   UpdateGoldCount(gamedata.level, &gold_count_text);
+   UpdateGoldCount(game_level_data.level, &gold_count_text);
 
 
    prevTicks = SDL_GetTicks();
@@ -220,7 +219,7 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, gamedata.level, game_input_flags, &player1_data, &gold_count_text);
+      handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text);
       
       SDL_SetRenderDrawColor(rend, 
                              game_settings.background_color_r, 
@@ -228,7 +227,7 @@ int main(int args, char * argc[])
                              game_settings.background_color_b, 0xFF);
       SDL_RenderClear( rend );
       
-      handle_render(rend, t_terrain, t_character, gamedata.level, &player1_data);
+      handle_render(rend, t_terrain, t_character, game_level_data.level, &player1_data);
       FontText_Render(&gold_count_text, 10, 10);
       SDL_RenderPresent(rend);
    }
@@ -332,7 +331,7 @@ static void handle_input(const SDL_Event * event, int * done, int * game_input_f
 
 
 static void handle_update(float seconds, 
-                          Level_T * level, 
+                          GameLevelData_T * game_level_data, 
                           int * game_input_flags, 
                           PlayerData_T * player1_data, 
                           FontText_T * gold_count_text)
@@ -344,9 +343,10 @@ static void handle_update(float seconds,
    LevelTile_T dig_above_tile, player_below_tile;
    int all_gold_colected;
    static int restart_key_prev = 0;
+   Level_T * next_level;
     
-   Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  0), &player_current_tile);
-   all_gold_colected = IsAllGoldColected(level);
+   Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, 0), &player_current_tile);
+   all_gold_colected = IsAllGoldColected(game_level_data->level);
    if(all_gold_colected == 1 && player_current_tile.terrain_type == TMAP_TILE_DOOR)
    {
       // TODO: WIN!!
@@ -379,13 +379,13 @@ static void handle_update(float seconds,
       cmd_fall_valid       = 0;
       
 
-      Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
+      Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0,  1), &player_below_tile);
 
 
       if(player_current_tile.gold_index >= 0) // Remove Gold if on Gold
       {
-         Level_RemoveGold(level, player_current_tile.gold_index);
-         UpdateGoldCount(level, gold_count_text);
+         Level_RemoveGold(game_level_data->level, player_current_tile.gold_index);
+         UpdateGoldCount(game_level_data->level, gold_count_text);
       }
 
       if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling
@@ -394,8 +394,8 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_dig_left] == 1) // Dig Left
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 1), &dig_desired_tile);
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 0), &dig_above_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 1), &dig_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 0), &dig_above_tile);
          if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
             (dig_above_tile.terrain_type == TMAP_TILE_AIR || dig_above_tile.has_hole == 1))
          {
@@ -404,8 +404,8 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_dig_right] == 1) // Dig Right
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 1), &dig_desired_tile);
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 0), &dig_above_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 1), &dig_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 0), &dig_above_tile);
          if(dig_desired_tile.terrain_type == TMAP_TILE_DIRT && 
             (dig_above_tile.terrain_type == TMAP_TILE_AIR || dig_above_tile.has_hole == 1))
          {
@@ -414,7 +414,7 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_move_left] == 1) // Move Left
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, -1, 0), &player_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 0), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
          {
             cmd_move_left_valid = 1;
@@ -422,7 +422,7 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_move_right] == 1) // Move Right
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 1, 0), &player_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 0), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
          {
             cmd_move_right_valid = 1;
@@ -430,7 +430,7 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_move_up] == 1) // Climb Up
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1 &&
             player_current_tile.terrain_type == TMAP_TILE_LADDER)
          {
@@ -439,7 +439,7 @@ static void handle_update(float seconds,
       }
       if(player1_data->input_flags[e_pi_move_down] == 1) // Climb Down or Fall
       {
-         Level_QueryTile(level, POS_SPLIT(player1_data->grid_p, 0, 1), &player_desired_tile);
+         Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, 1), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
          {
             if(player_current_tile.terrain_type == TMAP_TILE_BAR)
@@ -473,8 +473,9 @@ static void handle_update(float seconds,
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
 
-         Level_AddDigSpot(level, player1_data->grid_p.x - 1, 
-                                 player1_data->grid_p.y + 1);
+         Level_AddDigSpot(game_level_data->level, 
+                          player1_data->grid_p.x - 1, 
+                          player1_data->grid_p.y + 1);
       }
       else if(cmd_dig_right_valid == 1 && cmd_dig_left_valid == 0)
       {
@@ -482,8 +483,9 @@ static void handle_update(float seconds,
          player1_data->next_grid_p.x = player1_data->grid_p.x;
          player1_data->next_grid_p.y = player1_data->grid_p.y;
 
-         Level_AddDigSpot(level, player1_data->grid_p.x + 1, 
-                                 player1_data->grid_p.y + 1);
+         Level_AddDigSpot(game_level_data->level, 
+                          player1_data->grid_p.x + 1, 
+                          player1_data->grid_p.y + 1);
       }
       else if(cmd_move_up_valid == 1 && cmd_move_down_valid == 0)
       {
@@ -552,20 +554,36 @@ static void handle_update(float seconds,
          player1_data->input_flags[e_pi_move_down]  == 1)
       {
          player1_data->player_state = PLAYER_STATE_NOT_MOVING;
-         player1_data->grid_p.x = level->start_spot.x;
-         player1_data->grid_p.y = level->start_spot.y;
+         Level_SetPlayerAtStart(game_level_data->level, player1_data);
          //printf("ComeAlive!\n");
       }
    }
 
    if(game_input_flags[e_gi_restart_level] == 0 && restart_key_prev == 1)
    {
-      Level_Restart(level);
+      Level_Restart(game_level_data->level);
       player1_data->player_state = PLAYER_STATE_DEATH;
-      UpdateGoldCount(level, gold_count_text);
+      UpdateGoldCount(game_level_data->level, gold_count_text);
    }
    restart_key_prev = game_input_flags[e_gi_restart_level];
-   Level_Update(level, seconds);
+
+   if(player1_data->player_state == PLAYER_STATE_WIN)
+   {
+      // We won, so move the next level
+      next_level = LevelSet_GetLevel(game_level_data->levelset, game_level_data->level_index + 1);
+      if(next_level != NULL)
+      {
+         game_level_data->level_index ++;
+         game_level_data->level = next_level;
+         Level_Restart(game_level_data->level);
+         Level_SetPlayerAtStart(game_level_data->level, player1_data);
+         player1_data->player_state = PLAYER_STATE_NOT_MOVING;
+         UpdateGoldCount(game_level_data->level, gold_count_text);
+
+      }
+   }
+
+   Level_Update(game_level_data->level, seconds);
 }
 
 static void handle_render(SDL_Renderer * rend, 
@@ -686,41 +704,10 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
 }
 
 
-static void GameData_Init(GameData_T * gamedata, LevelSet_T * levelset, PlayerData_T * player)
+static int Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player)
 {
-   gamedata->player = player;
-   GameData_SetLevelSet(gamedata, levelset);
-}
-
-static void GameData_SetLevelSet(GameData_T * gamedata, LevelSet_T * levelset)
-{
-   gamedata->levelset = levelset;
-   GameData_SetLevel(gamedata, 0);
-}
-
-static void GameData_SetLevel(GameData_T * gamedata, int level)
-{
-   Level_T * levels;
-   size_t count;
-   gamedata->current_level = level;
-   levels = LevelSet_GetAll(gamedata->levelset, &count);
-
-   if(level < count)
-   {
-      gamedata->level = &levels[gamedata->current_level];
-      gamedata->player->grid_p.x = gamedata->level->start_spot.x;
-      gamedata->player->grid_p.y = gamedata->level->start_spot.y;
-      gamedata->player->player_state = PLAYER_STATE_DEATH;
-   }
-   else
-   {
-      gamedata->level = NULL;
-   }
-}
-
-
-static void GameData_NextLevel(GameData_T * gamedata)
-{
-   GameData_SetLevel(gamedata, gamedata->current_level + 1);
+   Level_GetStartSpot(level, &player->grid_p.x, &player->grid_p.y);
+   player->next_grid_p.x = player->grid_p.x;
+   player->next_grid_p.y = player->grid_p.y;
 }
 
