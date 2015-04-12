@@ -9,6 +9,8 @@ You can dig holes in the ground but they refill. If you in the hole when it refo
 
 ## Controls
 
+### Player
+
 * Number Pad 4 - Move Left
 * Number Pad 6 - Move Right
 * Number Pad 8 - Climb Up Ladder
@@ -17,6 +19,11 @@ You can dig holes in the ground but they refill. If you in the hole when it refo
 * Number Pad 9 - Dig Right
 
 For right now controls are not reconfigureable
+
+### Game
+
+* r   - Restart Level
+* Esc - Exit Game
 
 ## Configuration
 

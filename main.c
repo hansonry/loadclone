@@ -19,10 +19,7 @@
  *
  */
 #include <stdio.h>
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_image.h"
-#include "SDL2/SDL_ttf.h"
-
+#include "SDLInclude.h"
 
 #include "GlobalData.h"
 #include "SDLTools.h"
@@ -30,6 +27,7 @@
 #include "ArrayList.h"
 #include "Pos2D.h"
 #include "Level.h"
+#include "LevelSet.h"
 #include "FontText.h"
 
 #include "ConfigLoader.h"
@@ -57,6 +55,7 @@ struct GameSetting_S
    int foreground_color_r;
    int foreground_color_g;
    int foreground_color_b;
+   const char * levelset_filename;
 };
 
 
@@ -80,8 +79,8 @@ enum GameInput_E
 };
 
 
-typedef struct player_data_s player_data_t;
-struct player_data_s
+typedef struct PlayerData_S PlayerData_T;
+struct PlayerData_S
 {
    int input_flags[e_pi_last];
    Pos2D_T grid_p;
@@ -91,6 +90,22 @@ struct player_data_s
    float move_timeout;
 };
 
+
+typedef struct GameData_S GameData_T;
+struct GameData_S
+{
+   LevelSet_T * levelset;
+   Level_T * level;
+   PlayerData_T * player;
+   int current_level;
+   
+};
+
+static void GameData_Init(GameData_T * gamedata, LevelSet_T * levelset, PlayerData_T * player);
+
+static void GameData_SetLevelSet(GameData_T * gamedata, LevelSet_T * levelset);
+static void GameData_SetLevel(GameData_T * gamedata, int level);
+static void GameData_NextLevel(GameData_T * gamedata);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
@@ -102,13 +117,13 @@ static void CheckForExit(const SDL_Event *event, int * done);
 
 static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags);
 
-static void handle_update(float seconds, Level_T * level, int * game_input_flags,  player_data_t * player1_data, FontText_T * gold_count_text);
+static void handle_update(float seconds, Level_T * level, int * game_input_flags,  PlayerData_T * player1_data, FontText_T * gold_count_text);
 
 static void handle_render(SDL_Renderer * rend, 
                           SDL_Texture * t_terrain, 
                           SDL_Texture * t_character,
                           Level_T * level, 
-                          player_data_t * player1_data);
+                          PlayerData_T * player1_data);
 
 int main(int args, char * argc[])
 {
@@ -128,8 +143,9 @@ int main(int args, char * argc[])
    TTF_Font * font;
    FontText_T gold_count_text;
  
-   player_data_t player1_data;
-   Level_T level;
+   PlayerData_T player1_data;
+   LevelSet_T levelset;
+   GameData_T gamedata;
 
    ConfigLoader_T loader;
    GameSettings_T game_settings;
@@ -144,19 +160,21 @@ int main(int args, char * argc[])
    game_settings.foreground_color_r = ConfigLoader_GetInt(&loader,     "foreground.color.red",   255);
    game_settings.foreground_color_g = ConfigLoader_GetInt(&loader,     "foreground.color.green", 255);
    game_settings.foreground_color_b = ConfigLoader_GetInt(&loader,     "foreground.color.blue",  255);
+   game_settings.levelset_filename  = "main_levelset.txt";
 
 
    for(i = 0; i < e_pi_last; i++)
    {
       player1_data.input_flags[i] = 0;
    }
-   
-   Level_Init(&level);
-   Level_Load(&level, "testmap.txt");
 
-   player1_data.grid_p.x = level.start_spot.x;
-   player1_data.grid_p.y = level.start_spot.y;
-   player1_data.player_state = PLAYER_STATE_NOT_MOVING;
+   LevelSet_Init(&levelset);
+   LevelSet_Load(&levelset, game_settings.levelset_filename);
+   
+   //Level_Init(&level);
+   //Level_Load(&level, "testmap.txt");
+   GameData_Init(&gamedata, &levelset, &player1_data);
+
    
 
    SDL_Init(SDL_INIT_EVERYTHING);   
@@ -184,7 +202,7 @@ int main(int args, char * argc[])
                      game_settings.foreground_color_g,
                      game_settings.foreground_color_b, 0xFF);
 
-   UpdateGoldCount(&level, &gold_count_text);
+   UpdateGoldCount(gamedata.level, &gold_count_text);
 
 
    prevTicks = SDL_GetTicks();
@@ -202,7 +220,7 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &level, game_input_flags, &player1_data, &gold_count_text);
+      handle_update(seconds, gamedata.level, game_input_flags, &player1_data, &gold_count_text);
       
       SDL_SetRenderDrawColor(rend, 
                              game_settings.background_color_r, 
@@ -210,14 +228,15 @@ int main(int args, char * argc[])
                              game_settings.background_color_b, 0xFF);
       SDL_RenderClear( rend );
       
-      handle_render(rend, t_terrain, t_character, &level, &player1_data);
+      handle_render(rend, t_terrain, t_character, gamedata.level, &player1_data);
       FontText_Render(&gold_count_text, 10, 10);
       SDL_RenderPresent(rend);
    }
    
    ConfigLoader_Destroy(&loader);
 
-   Level_Destroy(&level); 
+   //Level_Destroy(&level); 
+   LevelSet_Destroy(&levelset);
    
    SDL_DestroyRenderer(rend);
    SDL_DestroyWindow(window);
@@ -315,7 +334,7 @@ static void handle_input(const SDL_Event * event, int * done, int * game_input_f
 static void handle_update(float seconds, 
                           Level_T * level, 
                           int * game_input_flags, 
-                          player_data_t * player1_data, 
+                          PlayerData_T * player1_data, 
                           FontText_T * gold_count_text)
 {
    int cmd_dig_left_valid, cmd_dig_right_valid;
@@ -553,7 +572,7 @@ static void handle_render(SDL_Renderer * rend,
                           SDL_Texture * t_terrain, 
                           SDL_Texture * t_character,
                           Level_T * level, 
-                          player_data_t * player1_data)
+                          PlayerData_T * player1_data)
 {
    Pos2D_T draw_loc;
    Pos2D_T diff;
@@ -666,4 +685,42 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
    FontText_SetString(gold_count_text, buffer);
 }
 
+
+static void GameData_Init(GameData_T * gamedata, LevelSet_T * levelset, PlayerData_T * player)
+{
+   gamedata->player = player;
+   GameData_SetLevelSet(gamedata, levelset);
+}
+
+static void GameData_SetLevelSet(GameData_T * gamedata, LevelSet_T * levelset)
+{
+   gamedata->levelset = levelset;
+   GameData_SetLevel(gamedata, 0);
+}
+
+static void GameData_SetLevel(GameData_T * gamedata, int level)
+{
+   Level_T * levels;
+   size_t count;
+   gamedata->current_level = level;
+   levels = LevelSet_GetAll(gamedata->levelset, &count);
+
+   if(level < count)
+   {
+      gamedata->level = &levels[gamedata->current_level];
+      gamedata->player->grid_p.x = gamedata->level->start_spot.x;
+      gamedata->player->grid_p.y = gamedata->level->start_spot.y;
+      gamedata->player->player_state = PLAYER_STATE_DEATH;
+   }
+   else
+   {
+      gamedata->level = NULL;
+   }
+}
+
+
+static void GameData_NextLevel(GameData_T * gamedata)
+{
+   GameData_SetLevel(gamedata, gamedata->current_level + 1);
+}
 

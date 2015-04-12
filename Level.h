@@ -29,7 +29,15 @@
 #define TMAP_TILE_DOOR   4
 
 
-typedef struct TerrainMap_S TerrainMap_T;
+typedef struct Level_S          Level_T;
+typedef struct TerrainMap_S     TerrainMap_T;
+typedef struct Gold_S           Gold_T;
+typedef enum   DigSpot_State_E  DigSpot_State_T;
+typedef struct DigSpot_S        DigSpot_T;
+typedef struct LevelTile_S      LevelTile_T;
+
+
+
 struct TerrainMap_S
 {
    int width;
@@ -37,7 +45,6 @@ struct TerrainMap_S
    int * data;
 };
 
-typedef struct Level_S Level_T;
 struct Level_S
 {
    TerrainMap_T tmap;
@@ -48,13 +55,11 @@ struct Level_S
 };
 
 
-typedef struct Gold_S Gold_T;
 struct Gold_S
 {
    Pos2D_T pos;
 };
 
-typedef enum DigSpot_State_E DigSpot_State_T;
 enum DigSpot_State_E
 {
    e_dss_close,
@@ -63,7 +68,6 @@ enum DigSpot_State_E
    e_dss_closing
 };
 
-typedef struct DigSpot_S DigSpot_T;
 struct DigSpot_S
 {
    Pos2D_T pos;
@@ -72,7 +76,6 @@ struct DigSpot_S
    int frame;
 };
 
-typedef struct LevelTile_S LevelTile_T;
 struct LevelTile_S
 {
    Pos2D_T pos;
@@ -92,8 +95,10 @@ void Level_Load(Level_T * level, const char * filename);
 
 void Level_Restart(Level_T * level);
 
-int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y);
+
+#ifdef SDL_LIB_INCLUDED
 void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain);
+#endif // SDL_LIB_INCLUDED
 
 void Level_Update(Level_T * level, float seconds);
 

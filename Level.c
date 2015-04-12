@@ -20,9 +20,7 @@
  */
 #include <stdlib.h>
 
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_image.h"
-#include "SDL2/SDL_ttf.h"
+#include "SDLInclude.h"
 
 #include "GlobalData.h"
 #include "SDLTools.h"
@@ -41,6 +39,7 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
 
 
+static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y);
 
 // S TerrainMap
 
@@ -180,7 +179,7 @@ void Level_Restart(Level_T * level)
 
 }
 
-int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y)
+static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y)
 {
    int show;
    int tile;

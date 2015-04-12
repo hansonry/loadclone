@@ -7,7 +7,8 @@ mkdir %GAMENAME%
 copy *.dll %GAMENAME%
 copy *.exe %GAMENAME%
 copy *.png %GAMENAME%
-copy testmap.txt %GAMENAME%
+copy *_levelset.txt %GAMENAME%
+copy *_map.txt %GAMENAME%
 copy config.txt %GAMENAME%
 copy *.otf %GAMENAME%
 copy how_to_play.md %GAMENAME%
