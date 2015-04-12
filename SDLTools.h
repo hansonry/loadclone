@@ -18,39 +18,15 @@
  *  3. This notice may not be removed or altered from any source distribution.
  *
  */
-#ifndef __CONFIGLOADER_H__
-#define __CONFIGLOADER_H__
-
-typedef struct ConfigLoader_S ConfigLoader_T;
-
-typedef struct ArrayList_S ArrayList_T;
+#ifndef __SDLTOOLS_H__
+#define __SDLTOOLS_H__
 
 
 
-struct ConfigLoader_S
-{
-   FILE        * file;
-   int           is_file_owned;
-   ArrayList_T * pair_list;
-};
+SDL_Texture * SDLTools_LoadTexture(SDL_Renderer * rend, const char * filename);
 
-void ConfigLoader_LoadFilename(ConfigLoader_T * loader, const char * filename);
-void ConfigLoader_LoadFile(ConfigLoader_T * loader, FILE * file);
-
-void ConfigLoader_Destroy(ConfigLoader_T * loader);
+void SDLTools_DrawSubimage(SDL_Renderer * rend, SDL_Texture * text, int subimage, int x, int y);
 
 
-int ConfigLoader_HasKey(ConfigLoader_T * loader, const char * key);
-
-
-int ConfigLoader_GetInt(ConfigLoader_T * loader, const char * key, int default_value);
-
-float ConfigLoader_GetFloat(ConfigLoader_T * loader, const char * key, float default_value);
-
-const char * ConfigLoader_GetString(ConfigLoader_T * loader, const char * key, const char * default_value);
-
-
-int ConfigLoader_GetBoolean(ConfigLoader_T * loader, const char * key, int default_value);
-
-#endif // __CONFIGLOADER_H__
+#endif //  __SDLTOOLS_H__
 

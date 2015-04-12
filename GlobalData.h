@@ -18,39 +18,38 @@
  *  3. This notice may not be removed or altered from any source distribution.
  *
  */
-#ifndef __CONFIGLOADER_H__
-#define __CONFIGLOADER_H__
-
-typedef struct ConfigLoader_S ConfigLoader_T;
-
-typedef struct ArrayList_S ArrayList_T;
+#ifndef __GLOBALDATA_H__
+#define __GLOBALDATA_H__
 
 
 
-struct ConfigLoader_S
-{
-   FILE        * file;
-   int           is_file_owned;
-   ArrayList_T * pair_list;
-};
-
-void ConfigLoader_LoadFilename(ConfigLoader_T * loader, const char * filename);
-void ConfigLoader_LoadFile(ConfigLoader_T * loader, FILE * file);
-
-void ConfigLoader_Destroy(ConfigLoader_T * loader);
+// Width and height of each tile
+#define TILE_WIDTH   32
+#define TILE_HEIGHT  32
 
 
-int ConfigLoader_HasKey(ConfigLoader_T * loader, const char * key);
+// Map tile image locations
+// y & x
+#define IMGID_BLOCK          0x0000
+#define IMGID_BROKENBLOCK_0  0x0300
+#define IMGID_BROKENBLOCK_1  0x0301
+#define IMGID_BROKENBLOCK_2  0x0302
+#define IMGID_LADDER         0x0102
+#define IMGID_GOLD           0x0502
+#define IMGID_GUY            0x0000
+#define IMGID_BAR            0x0002
+#define IMGID_DOORCLOSE      0x0003
+#define IMGID_DOOROPEN       0x0100
 
 
-int ConfigLoader_GetInt(ConfigLoader_T * loader, const char * key, int default_value);
 
-float ConfigLoader_GetFloat(ConfigLoader_T * loader, const char * key, float default_value);
+// Movement Timeing
+#define MOVE_TIMEOUT             0.3f
+#define FALL_TIMEOUT             0.1f
+#define DIG_TIMEOUT              0.5f
+#define HOLE_TIMEOUT             5.0f
+#define DIG_SPOT_DELATA_FRAME_TIMEOUT 0.1f
+#define DIG_SPOT_FRAME_COUNT     3
 
-const char * ConfigLoader_GetString(ConfigLoader_T * loader, const char * key, const char * default_value);
-
-
-int ConfigLoader_GetBoolean(ConfigLoader_T * loader, const char * key, int default_value);
-
-#endif // __CONFIGLOADER_H__
+#endif // __GLOBALDATA_H__
 

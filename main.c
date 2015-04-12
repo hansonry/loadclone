@@ -23,32 +23,18 @@
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_ttf.h"
 
+
+#include "GlobalData.h"
+#include "SDLTools.h"
+
 #include "ArrayList.h"
+#include "Pos2D.h"
+#include "Level.h"
 #include "FontText.h"
 
 #include "ConfigLoader.h"
 
-#define TILE_WIDTH             32
-#define TILE_HEIGHT            32
 
-// y & x
-#define IMGID_BLOCK          0x0000
-#define IMGID_BROKENBLOCK_0  0x0300
-#define IMGID_BROKENBLOCK_1  0x0301
-#define IMGID_BROKENBLOCK_2  0x0302
-#define IMGID_LADDER         0x0102
-#define IMGID_GOLD           0x0502
-#define IMGID_GUY            0x0000
-#define IMGID_BAR            0x0002
-#define IMGID_DOORCLOSE      0x0003
-#define IMGID_DOOROPEN       0x0100
-
-#define MOVE_TIMEOUT             0.3f
-#define FALL_TIMEOUT             0.1f
-#define DIG_TIMEOUT              0.5f
-#define HOLE_TIMEOUT             5.0f
-#define DIG_SPOT_DELATA_FRAME_TIMEOUT 0.1f
-#define DIG_SPOT_FRAME_COUNT     3
 
 #define PLAYER_STATE_NOT_MOVING  0
 #define PLAYER_STATE_MOVING      1
@@ -58,11 +44,6 @@
 #define PLAYER_STATE_WIN         5
 
 
-#define TMAP_TILE_AIR    0
-#define TMAP_TILE_DIRT   1
-#define TMAP_TILE_LADDER 2
-#define TMAP_TILE_BAR    3
-#define TMAP_TILE_DOOR   4
 
 typedef struct GameSetting_S GameSettings_T;
 struct GameSetting_S
@@ -98,111 +79,18 @@ enum GameInput_E
    e_gi_last
 };
 
-typedef struct pos_s pos_t;
-struct pos_s
-{
-   int x;
-   int y;
-};
-
-#define POS_SPLIT(p, dx, dy) (p).x + (dx), (p).y + (dy)
 
 typedef struct player_data_s player_data_t;
 struct player_data_s
 {
    int input_flags[e_pi_last];
-   pos_t grid_p;
-   pos_t next_grid_p;
+   Pos2D_T grid_p;
+   Pos2D_T next_grid_p;
    int player_state;
    float move_timer;
    float move_timeout;
 };
 
-typedef struct TerrainMap_S TerrainMap_T;
-struct TerrainMap_S
-{
-   int width;
-   int height;
-   int * data;
-};
-
-typedef struct Level_S Level_T;
-struct Level_S
-{
-   TerrainMap_T tmap;
-   ArrayList_T  dig_list;
-   ArrayList_T  gold_list;
-   ArrayList_T  gold_list_init;
-   pos_t start_spot;
-};
-
-
-typedef struct Gold_S Gold_T;
-struct Gold_S
-{
-   pos_t pos;
-};
-
-typedef enum DigSpot_State_E DigSpot_State_T;
-enum DigSpot_State_E
-{
-   e_dss_close,
-   e_dss_opening,
-   e_dss_open,
-   e_dss_closing
-};
-
-typedef struct DigSpot_S DigSpot_T;
-struct DigSpot_S
-{
-   pos_t pos;
-   float timer;
-   DigSpot_State_T state;
-   int frame;
-};
-
-typedef struct LevelTile_S LevelTile_T;
-struct LevelTile_S
-{
-   pos_t pos;
-   int index;
-   int terrain_type;
-   int has_hole;
-   int out_of_range;
-   int gold_index;
-};
-
-
-static void Level_Init(Level_T * level);
-
-static void Level_Destroy(Level_T * level);
-
-static void Level_Load(Level_T * level, const char * filename);
-
-static void Level_Restart(Level_T * level);
-
-static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y);
-static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain);
-
-static void Level_Update(Level_T * level, float seconds);
-
-static void Level_AddDigSpot(Level_T * level, int x, int y);
-
-static void Level_AddGold(Level_T * level, int x, int y);
-
-static void Level_RemoveGold(Level_T * level, size_t gold_index);
-
-static Gold_T * Level_GetGold(Level_T * level, int x, int y, size_t * out_index);
-
-static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y);
-
-static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile);
-
-static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
-
-static void TerrainMap_Destroy(TerrainMap_T * map);
-
-static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
@@ -211,9 +99,6 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text);
 
 static void CheckForExit(const SDL_Event *event, int * done);
 
-static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename);
-
-static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, int y);
 
 static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags);
 
@@ -285,8 +170,8 @@ int main(int args, char * argc[])
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
-   t_terrain = load_texture(rend, "terrain.png");
-   t_character = load_texture(rend, "character.png");
+   t_terrain   = SDLTools_LoadTexture(rend, "terrain.png");
+   t_character = SDLTools_LoadTexture(rend, "character.png");
    
    font = TTF_OpenFont("cnr.otf", 28);
    if(font == NULL)
@@ -426,46 +311,6 @@ static void handle_input(const SDL_Event * event, int * done, int * game_input_f
 
 }
 
-static SDL_Texture * load_texture(SDL_Renderer * rend, const char * filename)
-{
-   SDL_Surface * surf;
-   SDL_Texture * text;
-   surf = IMG_Load(filename);
-   if(surf == NULL)
-   {
-      printf("Error: could not load %s\n", filename);
-      return NULL;
-   }
-
-   text = SDL_CreateTextureFromSurface(rend, surf);
-
-   SDL_FreeSurface(surf);
-   return text;
-
-}
-
-static void draw_at(SDL_Renderer * rend, SDL_Texture * text, int imgid, int x, int y)
-{   
-   SDL_Rect r_src;
-   SDL_Rect r_dest;
-   int ix, iy;
-   
-   r_dest.x = x;
-   r_dest.y = y;
-   r_dest.w = TILE_WIDTH;
-   r_dest.h = TILE_HEIGHT;
-
-
-   ix = imgid & 0xFF;
-   iy = (imgid >> 8) & 0xFF;
-
-   r_src.x = ix * TILE_WIDTH;
-   r_src.y = iy * TILE_HEIGHT;
-   r_src.w = TILE_WIDTH;
-   r_src.h = TILE_HEIGHT;
-
-   SDL_RenderCopy(rend, text, &r_src, &r_dest);
-}
 
 static void handle_update(float seconds, 
                           Level_T * level, 
@@ -710,8 +555,8 @@ static void handle_render(SDL_Renderer * rend,
                           Level_T * level, 
                           player_data_t * player1_data)
 {
-   pos_t draw_loc;
-   pos_t diff;
+   Pos2D_T draw_loc;
+   Pos2D_T diff;
    float move_percent;
    int show;
 
@@ -754,8 +599,8 @@ static void handle_render(SDL_Renderer * rend,
    
    if(show == 1)
    {
-      draw_at(rend, t_character, IMGID_GUY, draw_loc.x, 
-                                            draw_loc.y); 
+      SDLTools_DrawSubimage(rend, t_character, IMGID_GUY, draw_loc.x, 
+                                                          draw_loc.y); 
    }
  
 }
@@ -793,12 +638,14 @@ static int IsTerrainFallable(LevelTile_T *  from, LevelTile_T *  to)
    return result;
 }
 
+
 static int IsAllGoldColected(Level_T * level)
 {
    int all_gold_colected;
-   size_t size;
-   (void)ArrayList_Get(&level->gold_list, &size, NULL);
-   if(size > 0)
+   int gold_count;
+ 
+   gold_count = Level_GetGoldCount(level, NULL);
+   if(gold_count > 0)
    {
       all_gold_colected = 0;
    }
@@ -811,434 +658,12 @@ static int IsAllGoldColected(Level_T * level)
 
 static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
 {
-   size_t gold_left, gold_total;
+   int gold_left, gold_total;
    char buffer[255];
-   (void)ArrayList_Get(&level->gold_list,      &gold_left,  NULL);
-   (void)ArrayList_Get(&level->gold_list_init, &gold_total, NULL);
-   sprintf(buffer, "Gold %i/%i", (int)gold_left, (int)gold_total);
+   gold_left = Level_GetGoldCount(level, &gold_total);
+
+   sprintf(buffer, "Gold %i/%i", gold_left, gold_total);
    FontText_SetString(gold_count_text, buffer);
 }
 
-// S TerrainMap
-
-
-static void TerrainMap_Init(TerrainMap_T * map, int width, int height)
-{
-   size_t i;
-   size_t size;
-   map->width  = width; 
-   map->height = height;
-   size        = width * height;
-   map->data   = malloc(sizeof(int) * size);
-   for(i = 0; i < size; i ++)
-   {
-      map->data[i] = TMAP_TILE_AIR;
-   }
-}
-
-static void TerrainMap_Destroy(TerrainMap_T * map)
-{
-   free(map->data);
-   map->data = NULL;
-}
-
-
-static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
-{
-   int index;
-   int result;
-   if(x >= 0 && x < map->width && y >= 0 && y < map->height)
-   {
-      index = x + (map->width * y);
-      result = map->data[index];
-   }
-   else
-   {
-      printf("Error: (%i, %i) is Out of Map Range\n", x, y);
-      result = TMAP_TILE_AIR;
-   }
-   return result;
-}
-
-// E TerrainMap
-// S Level
-
-
-static void Level_Init(Level_T * level)
-{
-   TerrainMap_Init(&level->tmap, 10, 10);
-   ArrayList_Init(&level->dig_list,       sizeof(DigSpot_T), 0);
-   ArrayList_Init(&level->gold_list,      sizeof(Gold_T),    0);
-   ArrayList_Init(&level->gold_list_init, sizeof(Gold_T),    0);
-   level->start_spot.x = 0;
-   level->start_spot.y = 0;
-}
-
-static void Level_Destroy(Level_T * level)
-{
-   TerrainMap_Destroy(&level->tmap);
-   ArrayList_Destroy(&level->dig_list);
-   ArrayList_Destroy(&level->gold_list);
-   ArrayList_Destroy(&level->gold_list_init);
-}
-
-static void Level_Load(Level_T * level, const char * filename)
-{
-   FILE * fp;
-   int input, index;
-   int w, h;
-   TerrainMap_T * map;
-   pos_t p;
-   Gold_T * gold;
-   size_t size;
-
-   map = &level->tmap;
-   fp = fopen(filename, "r");
-
-   if(fp == NULL)
-   {
-      printf("Error: Could not open \"%s\"\n", filename);
-   }
-   else
-   {
-      fscanf(fp, "%i", &w);
-      fscanf(fp, "%i", &h);
-      TerrainMap_Destroy(map);
-
-      TerrainMap_Init(map, w, h);
-      size = w * h;
-      index = 0;
-      p.x = p.y = 0;
-      while(!feof(fp) && index < size)
-      {
-         fscanf(fp, "%i", &input);
-         switch(input)
-         {
-            case 0:  map->data[index] = TMAP_TILE_AIR;    break;
-            case 1:  map->data[index] = TMAP_TILE_DIRT;   break;
-            case 2:  
-               level->start_spot.x = p.x;
-               level->start_spot.y = p.y;
-               break;
-            case 3:  map->data[index] = TMAP_TILE_LADDER; break;
-            case 4:  map->data[index] = TMAP_TILE_BAR;    break;
-            case 5:
-               map->data[index] = TMAP_TILE_AIR;
-               gold = ArrayList_Add(&level->gold_list_init, NULL);
-               gold->pos.x = p.x;
-               gold->pos.y = p.y;
-               break;
-            case 6: map->data[index] = TMAP_TILE_DOOR;    break;
-            default: map->data[index] = TMAP_TILE_AIR;    break;
-         }
-         index ++;
-         p.x ++;
-         if(p.x >= w)
-         {
-            p.x = 0;
-            p.y ++;
-         }
-         
-      }
-
-      fclose(fp);
-      Level_Restart(level);
-   }
-}
-
-static void Level_Restart(Level_T * level)
-{
-   size_t size;
-   Gold_T * gold;
-   gold = ArrayList_Get(&level->gold_list_init, &size, NULL);
-   ArrayList_Clear(&level->gold_list);
-   ArrayList_AddArray(&level->gold_list, gold, size);
-   ArrayList_Clear(&level->dig_list);
-
-}
-
-static int Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, DigSpot_T * dig_spot, int x, int y)
-{
-   int show;
-   int tile;
-   if(dig_spot->state == e_dss_opening)
-   {
-      switch(dig_spot->frame)
-      {
-         case 0:  show = 1; tile = IMGID_BROKENBLOCK_0; break;
-         case 1:  show = 1; tile = IMGID_BROKENBLOCK_1; break;
-         case 2:  show = 1; tile = IMGID_BROKENBLOCK_2; break;
-         default: show = 0; tile = 0xFFFF;              break;
-      }
-   }
-   else if(dig_spot->state == e_dss_open)
-   {
-      show = 0;
-      tile = 0xFFF;
-   }
-   else if(dig_spot->state == e_dss_closing)
-   {
-      switch(dig_spot->frame)
-      {
-         case 0:  show = 1; tile = IMGID_BROKENBLOCK_2; break;
-         case 1:  show = 1; tile = IMGID_BROKENBLOCK_1; break;
-         case 2:  show = 1; tile = IMGID_BROKENBLOCK_0; break;
-         default: show = 0; tile = 0xFFFF;              break;
-      }
-   }
-
-   if(show == 1)
-   {
-      draw_at(rend, t_terrain, tile, x, y);
-   }
-
-}
-
-static void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
-{
-   DigSpot_T * dig_spot;
-   int index;
-   int tile_rend;
-   pos_t p, c;
-   TerrainMap_T * map;
-   Gold_T * gold;
-   size_t i, size;
-   int all_gold_colected;
-
-
-   all_gold_colected = IsAllGoldColected(level);
-
-   map = &level->tmap;
-   p.x = 0;
-   p.y = 0;
-   index = 0;
-   c.x = 0;
-   c.y = 0; 
-   while(p.y < map->height)
-   {
-      switch(map->data[index])
-      {
-         case TMAP_TILE_DIRT:
-            dig_spot = Level_GetDigSpot(level, p.x, p.y);
-            if(dig_spot == NULL)
-            {
-               draw_at(rend, t_terrain, IMGID_BLOCK, c.x, c.y);
-            }
-            else
-            {
-               Level_Render_DigSpot(rend, t_terrain, dig_spot, c.x, c.y);
-            }
-            break;
-         case TMAP_TILE_LADDER:
-            draw_at(rend, t_terrain, IMGID_LADDER, c.x, c.y);
-            break;
-         case TMAP_TILE_BAR:
-            draw_at(rend, t_terrain, IMGID_BAR, c.x, c.y);
-            break;
-         case TMAP_TILE_DOOR:
-            if(all_gold_colected == 1)
-            {
-               draw_at(rend, t_terrain, IMGID_DOOROPEN, c.x, c.y);
-            }
-            else
-            {
-               draw_at(rend, t_terrain, IMGID_DOORCLOSE, c.x, c.y);
-            }
-            break;
-      }
-
-      index ++;
-      p.x ++;
-      c.x += TILE_WIDTH;
-      if(p.x >= map->width)
-      {
-         p.x = 0;
-         c.x = 0;
-         p.y ++;
-         c.y += TILE_HEIGHT;
-      }
-   }
-   
-   gold = ArrayList_Get(&level->gold_list, &size, NULL);
-   for(i = 0; i < size; i++)
-   {
-      c.x = gold[i].pos.x * TILE_WIDTH;
-      c.y = gold[i].pos.y * TILE_HEIGHT;
-      draw_at(rend, t_terrain, IMGID_GOLD, c.x, c.y);
-   }
-   
-}
-
-static void Level_Update(Level_T * level, float seconds)
-{
-   // Update Dig Spots
-   size_t size, i;
-   DigSpot_T * dig_spot;
-
-   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
-
-   // Update Dig Spots
-   for(i = 0; i < size; i++)
-   {
-      dig_spot[i].timer += seconds;
-      if(dig_spot[i].state == e_dss_opening)
-      {
-         if(dig_spot[i].timer >= DIG_SPOT_DELATA_FRAME_TIMEOUT)
-         {
-            dig_spot[i].frame ++;
-            dig_spot[i].timer -= DIG_SPOT_DELATA_FRAME_TIMEOUT;
-         }
-
-         if(dig_spot[i].frame >= DIG_SPOT_FRAME_COUNT)
-         {
-            dig_spot[i].state = e_dss_open;
-         }
-      }
-      else if(dig_spot[i].state == e_dss_open)
-      {
-         if(dig_spot[i].timer >= HOLE_TIMEOUT)
-         {
-            dig_spot[i].frame = 0;
-            dig_spot[i].timer -= HOLE_TIMEOUT;
-            dig_spot[i].state = e_dss_closing;
-         }
-      }
-      else if(dig_spot[i].state == e_dss_closing)
-      {
-         if(dig_spot[i].timer >= DIG_SPOT_DELATA_FRAME_TIMEOUT)
-         {
-            dig_spot[i].frame ++;
-            dig_spot[i].timer -= DIG_SPOT_DELATA_FRAME_TIMEOUT;
-         }
-
-         if(dig_spot[i].frame >= DIG_SPOT_FRAME_COUNT)
-         {
-            dig_spot[i].state = e_dss_close;
-         }
-      }
-
-   }
-
-   // Remove spots
-
-   // Iterate backward so that the removes don't effect the index
-   for(i = size - 1; i < size; i--)
-   {
-      if(dig_spot[i].state == e_dss_close)
-      {
-         ArrayList_Remove(&level->dig_list, i);
-      }
-   }
-
-}
-
-static void Level_AddDigSpot(Level_T * level, int x, int y)
-{
-   DigSpot_T * dig_spot;
-   dig_spot = ArrayList_Add(&level->dig_list, NULL);
-   dig_spot->pos.x = x;
-   dig_spot->pos.y = y;
-   dig_spot->timer = 0;
-   dig_spot->state = e_dss_opening;
-   dig_spot->frame = 0;
-}
-
-static void Level_AddGold(Level_T * level, int x, int y)
-{
-   Gold_T * gold;
-   gold = ArrayList_Add(&level->gold_list, NULL);
-   gold->pos.x = x;
-   gold->pos.y = y;
-}
-
-static void Level_RemoveGold(Level_T * level, size_t gold_index)
-{
-   ArrayList_Remove(&level->gold_list, gold_index);
-}
-
-static Gold_T * Level_GetGold(Level_T * level, int x, int y, size_t * out_index)
-{
-   size_t i, size;
-   Gold_T * gold, * result;
-   result = NULL;
-   gold = ArrayList_Get(&level->gold_list, &size, NULL);
-   for(i = 0; i < size; i++)
-   {
-      if(x == gold[i].pos.x && y == gold[i].pos.y)
-      {
-
-         result = &gold[i];
-         if(out_index != NULL)
-         {
-            (*out_index) = i;
-         }
-         break;
-      }
-   }
-   return result;
-}
-
-static DigSpot_T * Level_GetDigSpot(Level_T * level, int x, int y)
-{
-   size_t i, size;
-   DigSpot_T * dig_spot, * result;
-
-   result = NULL;
-   dig_spot = ArrayList_Get(&level->dig_list, &size, NULL);
-   for(i = 0; i < size; i ++)
-   {
-      if(x == dig_spot[i].pos.x && y == dig_spot[i].pos.y)
-      {
-         result = &dig_spot[i];
-         break;
-      }
-   }
-
-   return result;
-}
-
-static void Level_QueryTile(Level_T * level, int x, int y, LevelTile_T * tile)
-{
-   DigSpot_T * dig_spot;
-   Gold_T * gold;
-   size_t index;
-   tile->pos.x = x;
-   tile->pos.y = y;
-   if(x >= 0 && x < level->tmap.width && y >= 0 && y < level->tmap.height)
-   {
-      tile->index = x + (y * level->tmap.width);
-      tile->out_of_range = 0;
-      tile->terrain_type = level->tmap.data[tile->index];
-      tile->has_hole = 0;
-
-      // Check for hole
-      dig_spot = Level_GetDigSpot(level, x, y);
-      if(dig_spot == NULL)
-      {
-         tile->has_hole = 0;
-      }
-      else
-      {
-         tile->has_hole = 1;
-      }
-
-      // Check for gold
-      gold = Level_GetGold(level, x, y, &index);
-      if(gold == NULL)
-      {
-         tile->gold_index = -1;
-      }
-      else
-      {
-         tile->gold_index = (int)index;
-      }
-   }
-   else
-   {
-      tile->out_of_range = 1;
-   }
-}
-
-
-// E Level
 
