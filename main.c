@@ -99,7 +99,7 @@ struct GameLevelData_S
 
 };
 
-static int Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
+static void Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
 static int IsTerrainFallable(LevelTile_T * from, LevelTile_T * to);
@@ -704,7 +704,7 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text)
 }
 
 
-static int Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player)
+static void Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player)
 {
    Level_GetStartSpot(level, &player->grid_p.x, &player->grid_p.y);
    player->next_grid_p.x = player->grid_p.x;
