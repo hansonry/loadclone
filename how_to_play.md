@@ -53,6 +53,24 @@ foreground.color.blue  : 255
 
 # The main levelset to use
 game.levelset : main_levelset.txt
+
+
+# Look at https://wiki.libsdl.org/SDL_Scancode for codes
+# Key for reseting the level
+# controls.game.restart_level : R
+
+# Key for Climbing Up Ladders 
+# controls.player1.move_up    : Keypad 8
+# Key for Clibing Down Ladders and Letting Go of overhead bars
+# controls.player1.move_down  : Keypad 5
+# Key for going Left
+# controls.player1.move_left  : Keypad 4
+# Key for going Right
+# controls.player1.move_right : Keypad 6
+# Key for digging a Hole to your lower left
+# controls.player1.dig_left   : Keypad 7
+# Key for digging a Hole to your lower right
+# controls.player1.dig_right  : Keypad 9
 ```
 
 

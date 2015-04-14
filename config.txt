@@ -14,3 +14,16 @@
 
 # game.levelset : main_levelset.txt
 
+# Look at https://wiki.libsdl.org/SDL_Scancode for codes
+
+# controls.game.restart_level : R
+
+# controls.player1.move_up    : Keypad 8
+# controls.player1.move_down  : Keypad 5
+# controls.player1.move_left  : Keypad 4
+# controls.player1.move_right : Keypad 2
+# controls.player1.dig_left   : Keypad 7
+# controls.player1.dig_right  : Keypad 9
+
+
+

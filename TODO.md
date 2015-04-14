@@ -21,6 +21,7 @@
 
 ## Completed
 
+* Reprogramable Keys
 * Level List
 * Dig Tile Animation
 * Restart Level Key

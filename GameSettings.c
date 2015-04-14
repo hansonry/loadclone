@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "GameInput.h"
 #include "GameSettings.h"
 #include "ConfigLoader.h"
 
@@ -51,6 +52,15 @@ static void GameSettings_ParseFile(void)
    settings.foreground_color_g = ConfigLoader_GetInt(&loader,     "foreground.color.green", 255);
    settings.foreground_color_b = ConfigLoader_GetInt(&loader,     "foreground.color.blue",  255);
    settings.levelset_filename  = ConfigLoader_GetString(&loader,  "game.levelset", "main_levelset.txt");
+
+   settings.game_keys[e_gigk_restart_level]             = ConfigLoader_GetString(&loader,  "controls.game.restart_level", "R");
+   settings.player1_keys.key_string[e_gipk_move_up]     = ConfigLoader_GetString(&loader,  "controls.player1.move_up", "Keypad 8");
+   settings.player1_keys.key_string[e_gipk_move_down]   = ConfigLoader_GetString(&loader,  "controls.player1.move_down", "Keypad 5");
+   settings.player1_keys.key_string[e_gipk_move_left]   = ConfigLoader_GetString(&loader,  "controls.player1.move_left", "Keypad 4");
+   settings.player1_keys.key_string[e_gipk_move_right]  = ConfigLoader_GetString(&loader,  "controls.player1.move_right", "Keypad 6");
+   settings.player1_keys.key_string[e_gipk_dig_left]    = ConfigLoader_GetString(&loader,  "controls.player1.dig_left", "Keypad 7");
+   settings.player1_keys.key_string[e_gipk_dig_right]   = ConfigLoader_GetString(&loader,  "controls.player1.dig_right", "Keypad 9");
 }
+
 
 

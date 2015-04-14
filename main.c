@@ -30,7 +30,9 @@
 #include "LevelSet.h"
 #include "FontText.h"
 
+#include "GameInput.h"
 #include "GameSettings.h"
+#include "GameInput.h"
 
 #define PLAYER_STATE_NOT_MOVING  0
 #define PLAYER_STATE_MOVING      1
@@ -39,30 +41,11 @@
 #define PLAYER_STATE_DEATH       4
 #define PLAYER_STATE_WIN         5
 
-typedef enum PlayerInput_E PlayerInput_T;
-enum PlayerInput_E
-{
-   e_pi_move_up,
-   e_pi_move_down,
-   e_pi_move_left,
-   e_pi_move_right,
-   e_pi_dig_left,
-   e_pi_dig_right,
-   e_pi_last
-};
-
-typedef enum GameInput_E GameInput_T;
-enum GameInput_E
-{
-   e_gi_restart_level,
-   e_gi_last
-};
-
 
 typedef struct PlayerData_S PlayerData_T;
 struct PlayerData_S
 {
-   int input_flags[e_pi_last];
+   int input_flags[e_gipk_last];
    Pos2D_T grid_p;
    Pos2D_T next_grid_p;
    int player_state;
@@ -89,7 +72,7 @@ static void UpdateGoldCount(Level_T * level, FontText_T * gold_count_text);
 static void CheckForExit(const SDL_Event *event, int * done);
 
 
-static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags);
+static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags, SDL_Scancode * game_controls, SDL_Scancode * player1_controls);
 
 static void handle_update(float seconds, GameLevelData_T * game_level_data, int * game_input_flags,  PlayerData_T * player1_data, FontText_T * gold_count_text);
 
@@ -111,7 +94,7 @@ int main(int args, char * argc[])
    float seconds;
 
    int i;
-   int game_input_flags[e_gi_last];
+   int game_input_flags[e_gigk_last];
 
    // Font
    TTF_Font * font;
@@ -122,11 +105,21 @@ int main(int args, char * argc[])
    GameLevelData_T game_level_data;
 
    GameSettings_T * game_settings;
+   SDL_Scancode player1_controls[e_gigk_last];
+   SDL_Scancode game_controls[e_gigk_last];
+   
    
    GameSettings_Load("config.txt");
    game_settings = GameSettings_Get();
 
-   for(i = 0; i < e_pi_last; i++)
+   GameInput_PopulateSDLScancodes(player1_controls, 
+                                  game_settings->player1_keys.key_string, 
+                                  e_gipk_last);
+   GameInput_PopulateSDLScancodes(game_controls, 
+                                  game_settings->game_keys, 
+                                  e_gigk_last);
+
+   for(i = 0; i < e_gipk_last; i++)
    {
       player1_data.input_flags[i] = 0;
    }
@@ -180,7 +173,7 @@ int main(int args, char * argc[])
    {
       while(SDL_PollEvent(&event))
       {
-         handle_input(&event, &done, game_input_flags, player1_data.input_flags);
+         handle_input(&event, &done, game_input_flags, player1_data.input_flags, game_controls, player1_controls);
       }
       
       nowTicks = SDL_GetTicks();
@@ -203,7 +196,6 @@ int main(int args, char * argc[])
    
    GameSettings_Cleanup();
 
-   //Level_Destroy(&level); 
    LevelSet_Destroy(&levelset);
    
    SDL_DestroyRenderer(rend);
@@ -238,64 +230,51 @@ static void CheckForExit(const SDL_Event *event, int * done)
 }
 
 
-static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags)
+static void handle_input(const SDL_Event * event, 
+                         int * done, 
+                         int * game_input_flags, 
+                         int * player_input_flags, 
+                         SDL_Scancode * game_controls, 
+                         SDL_Scancode * player1_controls)
 {
-   PlayerInput_T pkey;
-   GameInput_T gkey;
+   size_t i;
+   GameInput_PlayerKeys_T pkey;
+   GameInput_GameKeys_T gkey;
    CheckForExit(event, done);
 
-   if(event->key.keysym.sym == SDLK_KP_8)
+   // Check Player Keys
+   pkey = e_gipk_last;
+   for(i = 0; i < e_gipk_last; i ++)
    {
-      pkey = e_pi_move_up;
-   }
-   else if(event->key.keysym.sym == SDLK_KP_5)
-   {
-      pkey = e_pi_move_down;
-   }
-   else if(event->key.keysym.sym == SDLK_KP_4)
-   {
-      pkey = e_pi_move_left;
-   }
-   else if(event->key.keysym.sym == SDLK_KP_6)
-   {
-      pkey = e_pi_move_right;
-   }
-   else if(event->key.keysym.sym == SDLK_KP_7)
-   {
-      pkey = e_pi_dig_left;
-   }
-   else if(event->key.keysym.sym == SDLK_KP_9)
-   {
-      pkey = e_pi_dig_right;
-   }
-   else
-   {
-      pkey = e_pi_last;
+      if(event->key.keysym.scancode == player1_controls[i])
+      {
+         pkey = i;
+         break;
+      }
    }
 
-   if(pkey != e_pi_last)
+   if(pkey != e_gipk_last)
    {
       if(event->type == SDL_KEYDOWN) player_input_flags[pkey] = 1;
       if(event->type == SDL_KEYUP)   player_input_flags[pkey] = 0;
    }
 
-   if(event->key.keysym.sym == SDLK_r)
+   // Check Game Keys
+   gkey = e_gigk_last;
+   for(i = 0; i < e_gigk_last; i ++)
    {
-      gkey = e_gi_restart_level;
-   }
-   else
-   {
-      gkey = e_gi_last;
+      if(event->key.keysym.scancode == game_controls[i])
+      {
+         gkey = i;
+         break;
+      }
    }
 
-   if(gkey != e_gi_last)
+   if(gkey != e_gigk_last)
    {
       if(event->type == SDL_KEYDOWN) game_input_flags[gkey] = 1;
       if(event->type == SDL_KEYUP)   game_input_flags[gkey] = 0;
    }
-
-
-
 }
 
 
@@ -361,7 +340,7 @@ static void handle_update(float seconds,
       {
          cmd_fall_valid = 1;
       }
-      if(player1_data->input_flags[e_pi_dig_left] == 1) // Dig Left
+      if(player1_data->input_flags[e_gipk_dig_left] == 1) // Dig Left
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 1), &dig_desired_tile);
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 0), &dig_above_tile);
@@ -371,7 +350,7 @@ static void handle_update(float seconds,
             cmd_dig_left_valid = 1;
          }
       }
-      if(player1_data->input_flags[e_pi_dig_right] == 1) // Dig Right
+      if(player1_data->input_flags[e_gipk_dig_right] == 1) // Dig Right
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 1), &dig_desired_tile);
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 0), &dig_above_tile);
@@ -381,7 +360,7 @@ static void handle_update(float seconds,
             cmd_dig_right_valid = 1;
          }
       }
-      if(player1_data->input_flags[e_pi_move_left] == 1) // Move Left
+      if(player1_data->input_flags[e_gipk_move_left] == 1) // Move Left
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, -1, 0), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
@@ -389,7 +368,7 @@ static void handle_update(float seconds,
             cmd_move_left_valid = 1;
          }
       }
-      if(player1_data->input_flags[e_pi_move_right] == 1) // Move Right
+      if(player1_data->input_flags[e_gipk_move_right] == 1) // Move Right
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 1, 0), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
@@ -397,7 +376,7 @@ static void handle_update(float seconds,
             cmd_move_right_valid = 1;
          }
       }
-      if(player1_data->input_flags[e_pi_move_up] == 1) // Climb Up
+      if(player1_data->input_flags[e_gipk_move_up] == 1) // Climb Up
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, -1), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1 &&
@@ -406,7 +385,7 @@ static void handle_update(float seconds,
             cmd_move_up_valid = 1;
          }
       }
-      if(player1_data->input_flags[e_pi_move_down] == 1) // Climb Down or Fall
+      if(player1_data->input_flags[e_gipk_move_down] == 1) // Climb Down or Fall
       {
          Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, 1), &player_desired_tile);
          if(IsTerrainPassable(&player_current_tile, &player_desired_tile) == 1)
@@ -515,12 +494,12 @@ static void handle_update(float seconds,
    }
    else if(player1_data->player_state == PLAYER_STATE_DEATH)
    {
-      if(player1_data->input_flags[e_pi_dig_left]   == 1 ||
-         player1_data->input_flags[e_pi_dig_right]  == 1 ||
-         player1_data->input_flags[e_pi_move_left]  == 1 ||
-         player1_data->input_flags[e_pi_move_right] == 1 ||
-         player1_data->input_flags[e_pi_move_up]    == 1 ||
-         player1_data->input_flags[e_pi_move_down]  == 1)
+      if(player1_data->input_flags[e_gipk_dig_left]   == 1 ||
+         player1_data->input_flags[e_gipk_dig_right]  == 1 ||
+         player1_data->input_flags[e_gipk_move_left]  == 1 ||
+         player1_data->input_flags[e_gipk_move_right] == 1 ||
+         player1_data->input_flags[e_gipk_move_up]    == 1 ||
+         player1_data->input_flags[e_gipk_move_down]  == 1)
       {
          player1_data->player_state = PLAYER_STATE_NOT_MOVING;
          Level_SetPlayerAtStart(game_level_data->level, player1_data);
@@ -528,13 +507,13 @@ static void handle_update(float seconds,
       }
    }
 
-   if(game_input_flags[e_gi_restart_level] == 0 && restart_key_prev == 1)
+   if(game_input_flags[e_gigk_restart_level] == 0 && restart_key_prev == 1)
    {
       Level_Restart(game_level_data->level);
       player1_data->player_state = PLAYER_STATE_DEATH;
       UpdateGoldCount(game_level_data->level, gold_count_text);
    }
-   restart_key_prev = game_input_flags[e_gi_restart_level];
+   restart_key_prev = game_input_flags[e_gigk_restart_level];
 
    if(player1_data->player_state == PLAYER_STATE_WIN)
    {
