@@ -50,6 +50,9 @@ foreground.color.red   : 255
 foreground.color.green : 255
 # Text Blue Color [0 - 255]
 foreground.color.blue  : 255
+
+# The main levelset to use
+game.levelset : main_levelset.txt
 ```
 
 

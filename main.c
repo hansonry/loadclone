@@ -154,7 +154,7 @@ int main(int args, char * argc[])
    game_settings.foreground_color_r = ConfigLoader_GetInt(&loader,     "foreground.color.red",   255);
    game_settings.foreground_color_g = ConfigLoader_GetInt(&loader,     "foreground.color.green", 255);
    game_settings.foreground_color_b = ConfigLoader_GetInt(&loader,     "foreground.color.blue",  255);
-   game_settings.levelset_filename  = "main_levelset.txt";
+   game_settings.levelset_filename  = ConfigLoader_GetString(&loader,  "game.levelset", "main_levelset.txt");
 
 
    for(i = 0; i < e_pi_last; i++)
