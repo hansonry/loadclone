@@ -30,9 +30,7 @@
 #include "LevelSet.h"
 #include "FontText.h"
 
-#include "ConfigLoader.h"
-
-
+#include "GameSettings.h"
 
 #define PLAYER_STATE_NOT_MOVING  0
 #define PLAYER_STATE_MOVING      1
@@ -40,24 +38,6 @@
 #define PLAYER_STATE_DIGGING     3
 #define PLAYER_STATE_DEATH       4
 #define PLAYER_STATE_WIN         5
-
-
-
-typedef struct GameSetting_S GameSettings_T;
-struct GameSetting_S
-{
-   int window_width;
-   int window_height;
-   int window_fullscreen; // boolean
-   int background_color_r;
-   int background_color_g;
-   int background_color_b;
-   int foreground_color_r;
-   int foreground_color_g;
-   int foreground_color_b;
-   const char * levelset_filename;
-};
-
 
 typedef enum PlayerInput_E PlayerInput_T;
 enum PlayerInput_E
@@ -141,21 +121,10 @@ int main(int args, char * argc[])
    LevelSet_T levelset;
    GameLevelData_T game_level_data;
 
-   ConfigLoader_T loader;
-   GameSettings_T game_settings;
+   GameSettings_T * game_settings;
    
-   ConfigLoader_LoadFilename(&loader, "config.txt");
-   game_settings.window_width       = ConfigLoader_GetInt(&loader,     "window.width",           800);
-   game_settings.window_height      = ConfigLoader_GetInt(&loader,     "window.height",          600);
-   game_settings.window_fullscreen  = ConfigLoader_GetBoolean(&loader, "window.fullscreen",      0);
-   game_settings.background_color_r = ConfigLoader_GetInt(&loader,     "background.color.red",   0);
-   game_settings.background_color_g = ConfigLoader_GetInt(&loader,     "background.color.green", 0);
-   game_settings.background_color_b = ConfigLoader_GetInt(&loader,     "background.color.blue",  0);
-   game_settings.foreground_color_r = ConfigLoader_GetInt(&loader,     "foreground.color.red",   255);
-   game_settings.foreground_color_g = ConfigLoader_GetInt(&loader,     "foreground.color.green", 255);
-   game_settings.foreground_color_b = ConfigLoader_GetInt(&loader,     "foreground.color.blue",  255);
-   game_settings.levelset_filename  = ConfigLoader_GetString(&loader,  "game.levelset", "main_levelset.txt");
-
+   GameSettings_Load("config.txt");
+   game_settings = GameSettings_Get();
 
    for(i = 0; i < e_pi_last; i++)
    {
@@ -163,7 +132,7 @@ int main(int args, char * argc[])
    }
 
    LevelSet_Init(&levelset);
-   LevelSet_Load(&levelset, game_settings.levelset_filename);
+   LevelSet_Load(&levelset, game_settings->levelset_filename);
    
    //Level_Init(&level);
    //Level_Load(&level, "testmap.txt");
@@ -181,9 +150,9 @@ int main(int args, char * argc[])
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
-                             game_settings.window_width,
-                             game_settings.window_height,
-                             SDL_WINDOW_SHOWN | ((game_settings.window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
+                             game_settings->window_width,
+                             game_settings->window_height,
+                             SDL_WINDOW_SHOWN | ((game_settings->window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
@@ -197,9 +166,9 @@ int main(int args, char * argc[])
    }
    FontText_Init(&gold_count_text, font, rend);
    FontText_SetColor(&gold_count_text,
-                     game_settings.foreground_color_r,
-                     game_settings.foreground_color_g,
-                     game_settings.foreground_color_b, 0xFF);
+                     game_settings->foreground_color_r,
+                     game_settings->foreground_color_g,
+                     game_settings->foreground_color_b, 0xFF);
 
    UpdateGoldCount(game_level_data.level, &gold_count_text);
 
@@ -222,9 +191,9 @@ int main(int args, char * argc[])
       handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text);
       
       SDL_SetRenderDrawColor(rend, 
-                             game_settings.background_color_r, 
-                             game_settings.background_color_g,
-                             game_settings.background_color_b, 0xFF);
+                             game_settings->background_color_r, 
+                             game_settings->background_color_g,
+                             game_settings->background_color_b, 0xFF);
       SDL_RenderClear( rend );
       
       handle_render(rend, t_terrain, t_character, game_level_data.level, &player1_data);
@@ -232,7 +201,7 @@ int main(int args, char * argc[])
       SDL_RenderPresent(rend);
    }
    
-   ConfigLoader_Destroy(&loader);
+   GameSettings_Cleanup();
 
    //Level_Destroy(&level); 
    LevelSet_Destroy(&levelset);
