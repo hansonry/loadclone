@@ -105,7 +105,7 @@ int main(int args, char * argc[])
    GameLevelData_T game_level_data;
 
    GameSettings_T * game_settings;
-   SDL_Scancode player1_controls[e_gigk_last];
+   SDL_Scancode player1_controls[e_gipk_last];
    SDL_Scancode game_controls[e_gigk_last];
    
    
@@ -118,10 +118,15 @@ int main(int args, char * argc[])
    GameInput_PopulateSDLScancodes(game_controls, 
                                   game_settings->game_keys, 
                                   e_gigk_last);
-
+   
    for(i = 0; i < e_gipk_last; i++)
    {
       player1_data.input_flags[i] = 0;
+   }
+
+   for(i = 0; i < e_gigk_last; i++)
+   {
+      game_input_flags[i] = 0;
    }
 
    LevelSet_Init(&levelset);
@@ -198,14 +203,14 @@ int main(int args, char * argc[])
 
    LevelSet_Destroy(&levelset);
    
-   SDL_DestroyRenderer(rend);
-   SDL_DestroyWindow(window);
    SDL_DestroyTexture(t_terrain);
    SDL_DestroyTexture(t_character);
 
    FontText_Destroy(&gold_count_text);
    TTF_CloseFont(font);
 
+   SDL_DestroyRenderer(rend);
+   SDL_DestroyWindow(window);
    SDL_Quit();
    
    
@@ -238,42 +243,57 @@ static void handle_input(const SDL_Event * event,
                          SDL_Scancode * player1_controls)
 {
    size_t i;
+   int key_state;
    GameInput_PlayerKeys_T pkey;
    GameInput_GameKeys_T gkey;
    CheckForExit(event, done);
 
-   // Check Player Keys
-   pkey = e_gipk_last;
-   for(i = 0; i < e_gipk_last; i ++)
+   if(event->type == SDL_KEYDOWN)
    {
-      if(event->key.keysym.scancode == player1_controls[i])
+      key_state = 1;
+   }
+   else if(event->type == SDL_KEYUP)
+   {
+      key_state = 0;
+   }
+   else
+   {
+      key_state = 3;
+   }
+
+   if(key_state < 3)
+   {
+      // Check Player Keys
+      pkey = e_gipk_last;
+      for(i = 0; i < e_gipk_last; i ++)
       {
-         pkey = i;
-         break;
+         if(event->key.keysym.scancode == player1_controls[i])
+         {
+            pkey = i;
+            break;
+         }
       }
-   }
 
-   if(pkey != e_gipk_last)
-   {
-      if(event->type == SDL_KEYDOWN) player_input_flags[pkey] = 1;
-      if(event->type == SDL_KEYUP)   player_input_flags[pkey] = 0;
-   }
-
-   // Check Game Keys
-   gkey = e_gigk_last;
-   for(i = 0; i < e_gigk_last; i ++)
-   {
-      if(event->key.keysym.scancode == game_controls[i])
+      if(pkey != e_gipk_last)
       {
-         gkey = i;
-         break;
+         player_input_flags[pkey] = key_state;
       }
-   }
 
-   if(gkey != e_gigk_last)
-   {
-      if(event->type == SDL_KEYDOWN) game_input_flags[gkey] = 1;
-      if(event->type == SDL_KEYUP)   game_input_flags[gkey] = 0;
+      // Check Game Keys
+      gkey = e_gigk_last;
+      for(i = 0; i < e_gigk_last; i ++)
+      {
+         if(event->key.keysym.scancode == game_controls[i])
+         {
+            gkey = i;
+            break;
+         }
+      }
+
+      if(gkey != e_gigk_last)
+      {
+         game_input_flags[gkey] = key_state;
+      }
    }
 }
 
