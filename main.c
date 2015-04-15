@@ -132,8 +132,6 @@ int main(int args, char * argc[])
    LevelSet_Init(&levelset);
    LevelSet_Load(&levelset, game_settings->levelset_filename);
    
-   //Level_Init(&level);
-   //Level_Load(&level, "testmap.txt");
    game_level_data.level = NULL;
    game_level_data.levelset = &levelset;
    game_level_data.level_index = 0;
