@@ -42,6 +42,11 @@
 #define PLAYER_STATE_WIN         5
 
 
+#define MARGIN_TOP     48
+#define MARGIN_BOTTOM  20
+#define MARGIN_LEFT    20
+#define MARGIN_RIGHT   20
+
 typedef struct PlayerData_S PlayerData_T;
 struct PlayerData_S
 {
@@ -94,6 +99,7 @@ int main(int args, char * argc[])
    SDL_Event event;
    SDL_Texture * t_terrain;
    SDL_Texture * t_character;
+   SDL_Rect level_viewport;
    int done;
    int prevTicks, diffTicks, nowTicks;
    float seconds;
@@ -169,6 +175,12 @@ int main(int args, char * argc[])
    
    rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
+
+   level_viewport.x = MARGIN_LEFT;
+   level_viewport.y = MARGIN_TOP;
+   level_viewport.w = game_settings->window_width  - (MARGIN_LEFT + MARGIN_RIGHT);
+   level_viewport.h = game_settings->window_height - (MARGIN_TOP  + MARGIN_BOTTOM);
+
    t_terrain   = SDLTools_LoadTexture(rend, "terrain.png");
    t_character = SDLTools_LoadTexture(rend, "character.png");
    
@@ -209,9 +221,11 @@ int main(int args, char * argc[])
                              game_settings->background_color_g,
                              game_settings->background_color_b, 0xFF);
       SDL_RenderClear( rend );
+      SDL_RenderSetViewport(rend, NULL);
       
-      handle_render(rend, t_terrain, t_character, game_level_data.level, &player1_data);
       FontText_Render(&gold_count_text, 10, 10);
+      SDL_RenderSetViewport(rend, &level_viewport);
+      handle_render(rend, t_terrain, t_character, game_level_data.level, &player1_data);
       SDL_RenderPresent(rend);
    }
    
