@@ -17,6 +17,8 @@ copy *_map.txt      %DEST%
 copy config.txt     %DEST%
 copy *.otf          %DEST%
 copy how_to_play.md %DEST%
+copy *.wav          %DEST%
+copy *.ogg          %DEST%
 
 REM Create a zip file with all the required files
 cd %TEMPDIR%
