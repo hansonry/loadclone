@@ -77,7 +77,7 @@ static void GameSettings_ParseFile(void)
                                  (settings.volume_effects / 100.0f)
                                  ));
 
-   settings.music_background = ConfigLoader_GetString(&loader, "music.background", "01-TimurIzhbulatov-Revz.mp3");
+   settings.music_background = ConfigLoader_GetString(&loader, "music.background", "01-TimurIzhbulatov-Revz.ogg");
 }
 
 

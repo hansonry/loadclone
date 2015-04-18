@@ -80,7 +80,7 @@ game.levelset : main_levelset.txt
 # volume.effects : 100
 
 # Music file to play in the background
-# music.background : 01-TimurIzhbulatov-Revz.mp3 
+# music.background : 01-TimurIzhbulatov-Revz.ogg 
 ```
 
 

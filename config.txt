@@ -31,5 +31,5 @@
 # volume.music   : 100
 # volume.effects : 100
 
-# music.background : 01-TimurIzhbulatov-Revz.mp3 
+# music.background : 01-TimurIzhbulatov-Revz.ogg
 
