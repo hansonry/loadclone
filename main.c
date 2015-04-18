@@ -74,7 +74,12 @@ static void CheckForExit(const SDL_Event *event, int * done);
 
 static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags, SDL_Scancode * game_controls, SDL_Scancode * player1_controls);
 
-static void handle_update(float seconds, GameLevelData_T * game_level_data, int * game_input_flags,  PlayerData_T * player1_data, FontText_T * gold_count_text);
+static void handle_update(float seconds, 
+                          GameLevelData_T * game_level_data, 
+                          int * game_input_flags,  
+                          PlayerData_T * player1_data, 
+                          FontText_T * gold_count_text,
+                          Mix_Chunk * pickup);
 
 static void handle_render(SDL_Renderer * rend, 
                           SDL_Texture * t_terrain, 
@@ -102,6 +107,7 @@ int main(int args, char * argc[])
 
    // Music
    Mix_Music * music;
+   Mix_Chunk * pickup;
 
    PlayerData_T player1_data;
    LevelSet_T levelset;
@@ -146,10 +152,13 @@ int main(int args, char * argc[])
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    TTF_Init();
-   Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG);
+   Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG | MIX_INIT_MOD);
    Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
 
    music = Mix_LoadMUS(game_settings->music_background);
+   pickup = Mix_LoadWAV("pickup.wav");
+   //printf("pickup %p %s\n", pickup, Mix_GetError());
+   Mix_VolumeChunk(pickup, game_settings->raw_volume_effects);
     
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
@@ -193,7 +202,7 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text);
+      handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text, pickup);
       
       SDL_SetRenderDrawColor(rend, 
                              game_settings->background_color_r, 
@@ -215,6 +224,7 @@ int main(int args, char * argc[])
 
 
    Mix_FreeMusic(music);
+   Mix_FreeChunk(pickup);
    Mix_CloseAudio();
    Mix_Quit();
    FontText_Destroy(&gold_count_text);
@@ -313,7 +323,8 @@ static void handle_update(float seconds,
                           GameLevelData_T * game_level_data, 
                           int * game_input_flags, 
                           PlayerData_T * player1_data, 
-                          FontText_T * gold_count_text)
+                          FontText_T * gold_count_text,
+                          Mix_Chunk * pickup)
 {
    int cmd_dig_left_valid, cmd_dig_right_valid;
    int cmd_move_left_valid, cmd_move_right_valid;
@@ -365,6 +376,7 @@ static void handle_update(float seconds,
       {
          Level_RemoveGold(game_level_data->level, player_current_tile.gold_index);
          UpdateGoldCount(game_level_data->level, gold_count_text);
+         Mix_PlayChannel(-1, pickup, 0);
       }
 
       if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling

@@ -21,8 +21,10 @@
 
 ## Completed
 
+* Pickup Gold sound added (Temp)
 * Volume configurations
 * Background Music Loader
+
 * Reprogramable Keys
 * Level List
 * Dig Tile Animation

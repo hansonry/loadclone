@@ -8,6 +8,7 @@ if family == "windows" then
    settings.link.libs:Add("SDL2main");
    settings.link.libpath:Add("SDL2-2.0.1/lib/x86");
 else
+   settings.cc.flags:Add("-Wall");
 end
 
 

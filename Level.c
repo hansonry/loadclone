@@ -35,7 +35,7 @@ static void TerrainMap_Init(TerrainMap_T * map, int width, int height);
 
 static void TerrainMap_Destroy(TerrainMap_T * map);
 
-static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
+//static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y);
 
 
 
@@ -65,7 +65,7 @@ static void TerrainMap_Destroy(TerrainMap_T * map)
    map->data = NULL;
 }
 
-
+/*
 static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
 {
    int index;
@@ -82,6 +82,7 @@ static int TerrainMap_GetTile(TerrainMap_T * map, int x, int y)
    }
    return result;
 }
+*/
 
 // E TerrainMap
 // S Level
@@ -221,7 +222,6 @@ void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
 {
    DigSpot_T * dig_spot;
    int index;
-   int tile_rend;
    Pos2D_T p, c;
    TerrainMap_T * map;
    Gold_T * gold;
