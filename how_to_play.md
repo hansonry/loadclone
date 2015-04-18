@@ -71,6 +71,16 @@ game.levelset : main_levelset.txt
 # controls.player1.dig_left   : Keypad 7
 # Key for digging a Hole to your lower right
 # controls.player1.dig_right  : Keypad 9
+
+# Master Volume [0 - 100] percent
+# volume.master  : 100
+# Music Volume [0 - 100] percent
+# volume.music   : 100
+# Sound Effect Volume [0 - 100] percent
+# volume.effects : 100
+
+# Music file to play in the background
+# music.background : 01-TimurIzhbulatov-Revz.mp3 
 ```
 
 

@@ -23,6 +23,12 @@ struct GameSettings_S
    const char * game_key_restart_level;
    GameSettings_PlayerKeys_T player1_keys;
    const char * game_keys[e_gigk_last];
+   float volume_master;
+   float volume_music;
+   float volume_effects;
+   int raw_volume_music;
+   int raw_volume_effects;
+   const char * music_background;
 };
 
 

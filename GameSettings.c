@@ -2,6 +2,7 @@
 #include "GameInput.h"
 #include "GameSettings.h"
 #include "ConfigLoader.h"
+#include "SDLInclude.h"
 
 static ConfigLoader_T loader;
 static GameSettings_T settings;
@@ -60,6 +61,23 @@ static void GameSettings_ParseFile(void)
    settings.player1_keys.key_string[e_gipk_move_right]  = ConfigLoader_GetString(&loader,  "controls.player1.move_right", "Keypad 6");
    settings.player1_keys.key_string[e_gipk_dig_left]    = ConfigLoader_GetString(&loader,  "controls.player1.dig_left", "Keypad 7");
    settings.player1_keys.key_string[e_gipk_dig_right]   = ConfigLoader_GetString(&loader,  "controls.player1.dig_right", "Keypad 9");
+
+   settings.volume_master  = ConfigLoader_GetFloat(&loader, "volume.master",  100.0f);
+   settings.volume_music   = ConfigLoader_GetFloat(&loader, "volume.music",   100.0f);
+   settings.volume_effects = ConfigLoader_GetFloat(&loader, "volume.effects", 100.0f);
+
+   // Compute actual music volumes based on master
+   settings.raw_volume_music = (int)(MIX_MAX_VOLUME * (
+                               (settings.volume_master / 100.0f) *
+                               (settings.volume_music  / 100.0f)
+                               ));
+
+   settings.raw_volume_effects = (int)(MIX_MAX_VOLUME * (
+                                 (settings.volume_master  / 100.0f) *
+                                 (settings.volume_effects / 100.0f)
+                                 ));
+
+   settings.music_background = ConfigLoader_GetString(&loader, "music.background", "01-TimurIzhbulatov-Revz.mp3");
 }
 
 

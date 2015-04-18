@@ -21,6 +21,8 @@
 
 ## Completed
 
+* Volume configurations
+* Background Music Loader
 * Reprogramable Keys
 * Level List
 * Dig Tile Animation

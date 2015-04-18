@@ -16,8 +16,10 @@ end
 settings.link.libs:Add("SDL2");
 settings.link.libs:Add("SDL2_image");
 settings.link.libs:Add("SDL2_ttf");
+settings.link.libs:Add("SDL2_mixer");
 
 source = Collect("*.c");
 
 objects = Compile(settings, source)
 exe = Link(settings, "loadclone", objects)
+

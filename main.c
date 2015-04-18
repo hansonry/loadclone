@@ -99,7 +99,10 @@ int main(int args, char * argc[])
    // Font
    TTF_Font * font;
    FontText_T gold_count_text;
- 
+
+   // Music
+   Mix_Music * music;
+
    PlayerData_T player1_data;
    LevelSet_T levelset;
    GameLevelData_T game_level_data;
@@ -143,6 +146,11 @@ int main(int args, char * argc[])
 
    SDL_Init(SDL_INIT_EVERYTHING);   
    TTF_Init();
+   Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG);
+   Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
+
+   music = Mix_LoadMUS(game_settings->music_background);
+    
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
@@ -170,7 +178,8 @@ int main(int args, char * argc[])
 
 
    prevTicks = SDL_GetTicks();
-   
+   Mix_FadeInMusic(music, -1, 1000);
+   Mix_VolumeMusic(game_settings->raw_volume_music);
    done = 0;
    while(done == 0)
    {
@@ -204,6 +213,10 @@ int main(int args, char * argc[])
    SDL_DestroyTexture(t_terrain);
    SDL_DestroyTexture(t_character);
 
+
+   Mix_FreeMusic(music);
+   Mix_CloseAudio();
+   Mix_Quit();
    FontText_Destroy(&gold_count_text);
    TTF_CloseFont(font);
 
