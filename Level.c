@@ -218,7 +218,7 @@ static void  Level_Render_DigSpot(SDL_Renderer * rend, SDL_Texture * t_terrain, 
 
 }
 
-void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
+void Level_Render(Level_T * level, SDL_Renderer * rend, int offset_x, int offset_y, SDL_Texture * t_terrain)
 {
    DigSpot_T * dig_spot;
    int index;
@@ -235,8 +235,8 @@ void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
    p.x = 0;
    p.y = 0;
    index = 0;
-   c.x = 0;
-   c.y = 0; 
+   c.x = offset_x;
+   c.y = offset_y; 
    while(p.y < map->height)
    {
       switch(map->data[index])
@@ -276,7 +276,7 @@ void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
       if(p.x >= map->width)
       {
          p.x = 0;
-         c.x = 0;
+         c.x = offset_x;
          p.y ++;
          c.y += TILE_HEIGHT;
       }
@@ -285,8 +285,8 @@ void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain)
    gold = ArrayList_Get(&level->gold_list, &size, NULL);
    for(i = 0; i < size; i++)
    {
-      c.x = gold[i].pos.x * TILE_WIDTH;
-      c.y = gold[i].pos.y * TILE_HEIGHT;
+      c.x = (gold[i].pos.x * TILE_WIDTH)  + offset_x;
+      c.y = (gold[i].pos.y * TILE_HEIGHT) + offset_y;
       SDLTools_DrawSubimage(rend, t_terrain, IMGID_GOLD, c.x, c.y);
    }
    

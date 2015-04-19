@@ -87,6 +87,7 @@ static void handle_update(float seconds,
                           Mix_Chunk * pickup);
 
 static void handle_render(SDL_Renderer * rend, 
+                          SDL_Rect * viewport,
                           SDL_Texture * t_terrain, 
                           SDL_Texture * t_character,
                           Level_T * level, 
@@ -225,7 +226,7 @@ int main(int args, char * argc[])
       
       FontText_Render(&gold_count_text, 10, 10);
       SDL_RenderSetViewport(rend, &level_viewport);
-      handle_render(rend, t_terrain, t_character, game_level_data.level, &player1_data);
+      handle_render(rend, &level_viewport, t_terrain, t_character, game_level_data.level, &player1_data);
       SDL_RenderPresent(rend);
    }
    
@@ -592,6 +593,7 @@ static void handle_update(float seconds,
 }
 
 static void handle_render(SDL_Renderer * rend, 
+                          SDL_Rect * viewport,
                           SDL_Texture * t_terrain, 
                           SDL_Texture * t_character,
                           Level_T * level, 
@@ -601,9 +603,13 @@ static void handle_render(SDL_Renderer * rend,
    Pos2D_T diff;
    float move_percent;
    int show;
+   int center_x, center_y;
+
+
+   center_x = (viewport->w / 2.0f) - (TILE_WIDTH  / 2.0f);
+   center_y = (viewport->h / 2.0f) - (TILE_HEIGHT / 2.0f);
 
    
-   Level_Render(level, rend, t_terrain);
 
    show = 1;
    switch(player1_data->player_state)
@@ -639,10 +645,12 @@ static void handle_render(SDL_Renderer * rend,
    }
 
    
+   Level_Render(level, rend, center_x - draw_loc.x, center_y - draw_loc.y,  t_terrain);
+
    if(show == 1)
    {
-      SDLTools_DrawSubimage(rend, t_character, IMGID_GUY, draw_loc.x, 
-                                                          draw_loc.y); 
+      SDLTools_DrawSubimage(rend, t_character, IMGID_GUY, center_x, 
+                                                          center_y); 
    }
  
 }

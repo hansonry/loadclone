@@ -97,7 +97,7 @@ void Level_Restart(Level_T * level);
 
 
 #ifdef SDL_LIB_INCLUDED
-void Level_Render(Level_T * level, SDL_Renderer * rend, SDL_Texture * t_terrain);
+void Level_Render(Level_T * level, SDL_Renderer * rend, int offset_x, int offset_y, SDL_Texture * t_terrain);
 #endif // SDL_LIB_INCLUDED
 
 void Level_Update(Level_T * level, float seconds);
