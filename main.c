@@ -77,6 +77,13 @@ struct GameRenderData_S
    SDL_Texture * text_character;
 };
 
+typedef struct GameAudioData_S GameAudioData_T;
+struct GameAudioData_S
+{
+   Mix_Music * music;
+   Mix_Chunk * pickup;
+};
+
 static void Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
@@ -91,10 +98,10 @@ static void handle_input(const SDL_Event * event, int * done, int * game_input_f
 
 static void handle_update(float seconds, 
                           GameLevelData_T * game_level_data, 
+                          GameAudioData_T * game_audio_data,
                           int * game_input_flags,  
                           PlayerData_T * player1_data, 
-                          FontText_T * gold_count_text,
-                          Mix_Chunk * pickup);
+                          FontText_T * gold_count_text);
 
 static void handle_render(GameRenderData_T * game_render_data, 
                           Level_T * level, 
@@ -104,6 +111,7 @@ int main(int args, char * argc[])
 {
    SDL_Window  * window;
    GameRenderData_T game_render_data;
+   GameAudioData_T game_audio_data;
    SDL_Event event;
    int done;
    int prevTicks, diffTicks, nowTicks;
@@ -117,8 +125,6 @@ int main(int args, char * argc[])
    FontText_T gold_count_text;
 
    // Music
-   Mix_Music * music;
-   Mix_Chunk * pickup;
 
    PlayerData_T player1_data;
    LevelSet_T levelset;
@@ -166,10 +172,10 @@ int main(int args, char * argc[])
    Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG | MIX_INIT_MOD);
    Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
 
-   music = Mix_LoadMUS(game_settings->music_background);
-   pickup = Mix_LoadWAV("pickup.wav");
+   game_audio_data.music = Mix_LoadMUS(game_settings->music_background);
+   game_audio_data.pickup = Mix_LoadWAV("pickup.wav");
    //printf("pickup %p %s\n", pickup, Mix_GetError());
-   Mix_VolumeChunk(pickup, game_settings->raw_volume_effects);
+   Mix_VolumeChunk(game_audio_data.pickup, game_settings->raw_volume_effects);
     
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
@@ -204,7 +210,7 @@ int main(int args, char * argc[])
 
 
    prevTicks = SDL_GetTicks();
-   Mix_FadeInMusic(music, -1, 1000);
+   Mix_FadeInMusic(game_audio_data.music, -1, 1000);
    Mix_VolumeMusic(game_settings->raw_volume_music);
    done = 0;
    while(done == 0)
@@ -219,7 +225,12 @@ int main(int args, char * argc[])
       seconds = (float)diffTicks / 1000.0f;
       prevTicks = nowTicks;
       
-      handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text, pickup);
+      handle_update(seconds, 
+                    &game_level_data, 
+                    &game_audio_data, 
+                    game_input_flags, 
+                    &player1_data, 
+                    &gold_count_text);
       
       SDL_SetRenderDrawColor(game_render_data.rend, 
                              game_settings->background_color_r, 
@@ -242,8 +253,8 @@ int main(int args, char * argc[])
    SDL_DestroyTexture(game_render_data.text_character);
 
 
-   Mix_FreeMusic(music);
-   Mix_FreeChunk(pickup);
+   Mix_FreeMusic(game_audio_data.music);
+   Mix_FreeChunk(game_audio_data.pickup);
    Mix_CloseAudio();
    Mix_Quit();
    FontText_Destroy(&gold_count_text);
@@ -340,10 +351,10 @@ static void handle_input(const SDL_Event * event,
 
 static void handle_update(float seconds, 
                           GameLevelData_T * game_level_data, 
+                          GameAudioData_T * game_audio_data,
                           int * game_input_flags, 
                           PlayerData_T * player1_data, 
-                          FontText_T * gold_count_text,
-                          Mix_Chunk * pickup)
+                          FontText_T * gold_count_text)
 {
    int cmd_dig_left_valid, cmd_dig_right_valid;
    int cmd_move_left_valid, cmd_move_right_valid;
@@ -395,7 +406,7 @@ static void handle_update(float seconds,
       {
          Level_RemoveGold(game_level_data->level, player_current_tile.gold_index);
          UpdateGoldCount(game_level_data->level, gold_count_text);
-         Mix_PlayChannel(-1, pickup, 0);
+         Mix_PlayChannel(-1, game_audio_data->pickup, 0);
       }
 
       if(IsTerrainFallable(&player_current_tile, &player_below_tile) == 1) // Falling
