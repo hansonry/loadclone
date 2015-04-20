@@ -4,9 +4,13 @@
 
 ## Up and Comming
 
+* Sound - All Gold Pickup
+* Sound - Level Completed
+* Sound - Gound Hit
+* Sound - Falling
+* Sound - Wall Hit
 * Life Count
 * Animation of Charater
-* Scrolling Map Support
 * Level Timer
 * Figure out a better way to work Level Lists
 
@@ -21,6 +25,7 @@
 
 ## Completed
 
+* Scrolling Map Support
 * Pickup Gold sound added (Temp)
 * Volume configurations
 * Background Music Loader

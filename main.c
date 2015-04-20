@@ -67,6 +67,16 @@ struct GameLevelData_S
 
 };
 
+
+typedef struct GameRenderData_S GameRenderData_T;
+struct GameRenderData_S
+{
+   SDL_Renderer * rend;
+   SDL_Rect level_viewport;
+   SDL_Texture * text_terrain;
+   SDL_Texture * text_character;
+};
+
 static void Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
@@ -86,21 +96,15 @@ static void handle_update(float seconds,
                           FontText_T * gold_count_text,
                           Mix_Chunk * pickup);
 
-static void handle_render(SDL_Renderer * rend, 
-                          SDL_Rect * viewport,
-                          SDL_Texture * t_terrain, 
-                          SDL_Texture * t_character,
+static void handle_render(GameRenderData_T * game_render_data, 
                           Level_T * level, 
                           PlayerData_T * player1_data);
 
 int main(int args, char * argc[])
 {
    SDL_Window  * window;
-   SDL_Renderer * rend;   
+   GameRenderData_T game_render_data;
    SDL_Event event;
-   SDL_Texture * t_terrain;
-   SDL_Texture * t_character;
-   SDL_Rect level_viewport;
    int done;
    int prevTicks, diffTicks, nowTicks;
    float seconds;
@@ -174,23 +178,23 @@ int main(int args, char * argc[])
                              game_settings->window_height,
                              SDL_WINDOW_SHOWN | ((game_settings->window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
    
-   rend = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  game_render_data.rend  = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
 
-   level_viewport.x = MARGIN_LEFT;
-   level_viewport.y = MARGIN_TOP;
-   level_viewport.w = game_settings->window_width  - (MARGIN_LEFT + MARGIN_RIGHT);
-   level_viewport.h = game_settings->window_height - (MARGIN_TOP  + MARGIN_BOTTOM);
+   game_render_data.level_viewport.x = MARGIN_LEFT;
+   game_render_data.level_viewport.y = MARGIN_TOP;
+   game_render_data.level_viewport.w = game_settings->window_width  - (MARGIN_LEFT + MARGIN_RIGHT);
+   game_render_data.level_viewport.h = game_settings->window_height - (MARGIN_TOP  + MARGIN_BOTTOM);
 
-   t_terrain   = SDLTools_LoadTexture(rend, "terrain.png");
-   t_character = SDLTools_LoadTexture(rend, "character.png");
+   game_render_data.text_terrain   = SDLTools_LoadTexture(game_render_data.rend, "terrain.png");
+   game_render_data.text_character = SDLTools_LoadTexture(game_render_data.rend, "character.png");
    
    font = TTF_OpenFont("cnr.otf", 28);
    if(font == NULL)
    {
       printf("Font Null\n");
    }
-   FontText_Init(&gold_count_text, font, rend);
+   FontText_Init(&gold_count_text, font, game_render_data.rend);
    FontText_SetColor(&gold_count_text,
                      game_settings->foreground_color_r,
                      game_settings->foreground_color_g,
@@ -217,25 +221,25 @@ int main(int args, char * argc[])
       
       handle_update(seconds, &game_level_data, game_input_flags, &player1_data, &gold_count_text, pickup);
       
-      SDL_SetRenderDrawColor(rend, 
+      SDL_SetRenderDrawColor(game_render_data.rend, 
                              game_settings->background_color_r, 
                              game_settings->background_color_g,
                              game_settings->background_color_b, 0xFF);
-      SDL_RenderClear( rend );
-      SDL_RenderSetViewport(rend, NULL);
+      SDL_RenderClear( game_render_data.rend );
+      SDL_RenderSetViewport(game_render_data.rend, NULL);
       
       FontText_Render(&gold_count_text, 10, 10);
-      SDL_RenderSetViewport(rend, &level_viewport);
-      handle_render(rend, &level_viewport, t_terrain, t_character, game_level_data.level, &player1_data);
-      SDL_RenderPresent(rend);
+      SDL_RenderSetViewport(game_render_data.rend, &game_render_data.level_viewport);
+      handle_render(&game_render_data, game_level_data.level, &player1_data);
+      SDL_RenderPresent(game_render_data.rend);
    }
    
    GameSettings_Cleanup();
 
    LevelSet_Destroy(&levelset);
    
-   SDL_DestroyTexture(t_terrain);
-   SDL_DestroyTexture(t_character);
+   SDL_DestroyTexture(game_render_data.text_terrain);
+   SDL_DestroyTexture(game_render_data.text_character);
 
 
    Mix_FreeMusic(music);
@@ -245,7 +249,7 @@ int main(int args, char * argc[])
    FontText_Destroy(&gold_count_text);
    TTF_CloseFont(font);
 
-   SDL_DestroyRenderer(rend);
+   SDL_DestroyRenderer(game_render_data.rend);
    SDL_DestroyWindow(window);
    SDL_Quit();
    
@@ -592,10 +596,7 @@ static void handle_update(float seconds,
    Level_Update(game_level_data->level, seconds);
 }
 
-static void handle_render(SDL_Renderer * rend, 
-                          SDL_Rect * viewport,
-                          SDL_Texture * t_terrain, 
-                          SDL_Texture * t_character,
+static void handle_render(GameRenderData_T * game_render_data,
                           Level_T * level, 
                           PlayerData_T * player1_data)
 {
@@ -606,8 +607,8 @@ static void handle_render(SDL_Renderer * rend,
    int center_x, center_y;
 
 
-   center_x = (viewport->w / 2.0f) - (TILE_WIDTH  / 2.0f);
-   center_y = (viewport->h / 2.0f) - (TILE_HEIGHT / 2.0f);
+   center_x = (game_render_data->level_viewport.w / 2.0f) - (TILE_WIDTH  / 2.0f);
+   center_y = (game_render_data->level_viewport.h / 2.0f) - (TILE_HEIGHT / 2.0f);
 
    
 
@@ -645,12 +646,17 @@ static void handle_render(SDL_Renderer * rend,
    }
 
    
-   Level_Render(level, rend, center_x - draw_loc.x, center_y - draw_loc.y,  t_terrain);
+   Level_Render(level, 
+                game_render_data->rend, 
+                center_x - draw_loc.x, 
+                center_y - draw_loc.y,  
+                game_render_data->text_terrain);
 
    if(show == 1)
    {
-      SDLTools_DrawSubimage(rend, t_character, IMGID_GUY, center_x, 
-                                                          center_y); 
+      SDLTools_DrawSubimage(game_render_data->rend, 
+                            game_render_data->text_character, IMGID_GUY, 
+                            center_x, center_y); 
    }
  
 }
