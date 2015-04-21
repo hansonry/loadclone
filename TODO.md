@@ -18,14 +18,16 @@
 
 * Enemy AI
 * Main Menu
-* Reconfigurable Controls
 * Local Multiplayer
 * Network Multiplayer
-
+* Gamepad Support
+* Character Animation (Waiting on art)
 
 ## Completed
 
+* Generator for configurations
 * Scrolling Map Support
+* Reconfigurable Controls
 * Pickup Gold sound added (Temp)
 * Volume configurations
 * Background Music Loader
