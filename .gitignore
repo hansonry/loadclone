@@ -6,4 +6,9 @@ loadclone
 *.obj
 *.manifest
 *.bundle
+*.pdb
+GameConfigData.h
+GameConfigData.inl
+config.txt
+config_template.txt
 

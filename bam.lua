@@ -1,4 +1,13 @@
+
+config_tool_path     = "config_tool/"
+config_tool_settings = NewSettings()
+config_tool_source   = Collect(config_tool_path .. "*.c")
+config_tool_objects  = Compile(config_tool_settings, config_tool_source)
+config_tool_exe      = Link(config_tool_settings, config_tool_path .. "config_tool", config_tool_objects)
+
+
 settings = NewSettings()
+
 
 if family == "windows" then
    settings.cc.includes:Add("SDL2-2.0.1/include");

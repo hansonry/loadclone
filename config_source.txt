@@ -1,0 +1,29 @@
+# data_type  name  default_value  description
+i "window.width"                800                           "Window Width in Pixels"
+i "window.height"               600                           "Window Height in Pixels"
+b "window.fullscreen"           0                             "Fullscreen option 1 = fullscreen, 0 = Windowed"
+e
+i "background.color.red"        0                             "Background Red Color [0 - 255]"
+i "background.color.green"      0                             "Background Green Color [0 - 255]"
+i "background.color.blue"       0                             "Background Blue Color [0 - 255]"
+e
+i "foreground.color.red"        255                           "Text Red Color [0 - 255]"
+i "foreground.color.green"      255                           "Text Green Color [0 - 255]"
+i "foreground.color.blue"       255                           "Text Blue Color [0 - 255]"
+e
+s "game.levelset"               "main_levelset.txt"           "The main levelset to use"
+e
+c "Look at https://wiki.libsdl.org/SDL_Scancode for codes"
+s "controls.game.restart_level" "R"                           "Key for reseting the level"
+s "controls.player1.move_up"    "Keypad 8"                    "Key for Climbing Up Ladders"
+s "controls.player1.move_down"  "Keypad 5"                    "Key for Clibing Down Ladders and Letting Go of overhead bars"
+s "controls.player1.move_left"  "Keypad 4"                    "Key for going Left"
+s "controls.player1.move_right" "Keypad 6"                    "Key for going Right"
+s "controls.player1.dig_left"   "Keypad 7"                    "Key for digging a Hole to your lower left"
+s "controls.player1.dig_right"  "Keypad 9"                    "Key for digging a Hole to your lower right"
+e
+f "volume.master"               100                           "Master Volume [0 - 100] percent"
+f "volume.music"                100                           "Music Volume [0 - 100] percent"
+f "volume.effects"              100                           "Sound Effect Volume [0 - 100] percent"
+e
+s "music.background"            "01-TimurIzhbulatov-Revz.ogg" "Music file to play in the background"

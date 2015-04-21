@@ -31,6 +31,7 @@
 #include "FontText.h"
 
 #include "GameInput.h"
+#include "GameConfigData.h"
 #include "GameSettings.h"
 #include "GameInput.h"
 
@@ -156,7 +157,7 @@ int main(int args, char * argc[])
    }
 
    LevelSet_Init(&levelset);
-   LevelSet_Load(&levelset, game_settings->levelset_filename);
+   LevelSet_Load(&levelset, game_settings->config.game_levelset);
    
    game_level_data.level = NULL;
    game_level_data.levelset = &levelset;
@@ -172,7 +173,7 @@ int main(int args, char * argc[])
    Mix_Init(MIX_INIT_MP3 | MIX_INIT_OGG | MIX_INIT_MOD);
    Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
 
-   game_audio_data.music = Mix_LoadMUS(game_settings->music_background);
+   game_audio_data.music = Mix_LoadMUS(game_settings->config.music_background);
    game_audio_data.pickup = Mix_LoadWAV("pickup.wav");
    //printf("pickup %p %s\n", pickup, Mix_GetError());
    Mix_VolumeChunk(game_audio_data.pickup, game_settings->raw_volume_effects);
@@ -180,17 +181,17 @@ int main(int args, char * argc[])
    window = SDL_CreateWindow("Load Clone", 
                              SDL_WINDOWPOS_CENTERED, 
                              SDL_WINDOWPOS_CENTERED, 
-                             game_settings->window_width,
-                             game_settings->window_height,
-                             SDL_WINDOW_SHOWN | ((game_settings->window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
+                             game_settings->config.window_width,
+                             game_settings->config.window_height,
+                             SDL_WINDOW_SHOWN | ((game_settings->config.window_fullscreen == 1) ? SDL_WINDOW_FULLSCREEN : 0) );
    
   game_render_data.rend  = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
    
 
    game_render_data.level_viewport.x = MARGIN_LEFT;
    game_render_data.level_viewport.y = MARGIN_TOP;
-   game_render_data.level_viewport.w = game_settings->window_width  - (MARGIN_LEFT + MARGIN_RIGHT);
-   game_render_data.level_viewport.h = game_settings->window_height - (MARGIN_TOP  + MARGIN_BOTTOM);
+   game_render_data.level_viewport.w = game_settings->config.window_width  - (MARGIN_LEFT + MARGIN_RIGHT);
+   game_render_data.level_viewport.h = game_settings->config.window_height - (MARGIN_TOP  + MARGIN_BOTTOM);
 
    game_render_data.text_terrain   = SDLTools_LoadTexture(game_render_data.rend, "terrain.png");
    game_render_data.text_character = SDLTools_LoadTexture(game_render_data.rend, "character.png");
@@ -202,9 +203,9 @@ int main(int args, char * argc[])
    }
    FontText_Init(&gold_count_text, font, game_render_data.rend);
    FontText_SetColor(&gold_count_text,
-                     game_settings->foreground_color_r,
-                     game_settings->foreground_color_g,
-                     game_settings->foreground_color_b, 0xFF);
+                     game_settings->config.foreground_color_red,
+                     game_settings->config.foreground_color_green,
+                     game_settings->config.foreground_color_blue, 0xFF);
 
    UpdateGoldCount(game_level_data.level, &gold_count_text);
 
@@ -233,9 +234,9 @@ int main(int args, char * argc[])
                     &gold_count_text);
       
       SDL_SetRenderDrawColor(game_render_data.rend, 
-                             game_settings->background_color_r, 
-                             game_settings->background_color_g,
-                             game_settings->background_color_b, 0xFF);
+                             game_settings->config.background_color_red, 
+                             game_settings->config.background_color_green,
+                             game_settings->config.background_color_blue, 0xFF);
       SDL_RenderClear( game_render_data.rend );
       SDL_RenderSetViewport(game_render_data.rend, NULL);
       

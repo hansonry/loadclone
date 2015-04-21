@@ -10,25 +10,11 @@ struct GameSettings_PlayerKeys_S
 };
 struct GameSettings_S
 {
-   int window_width;
-   int window_height;
-   int window_fullscreen; // boolean
-   int background_color_r;
-   int background_color_g;
-   int background_color_b;
-   int foreground_color_r;
-   int foreground_color_g;
-   int foreground_color_b;
-   const char * levelset_filename;
-   const char * game_key_restart_level;
-   GameSettings_PlayerKeys_T player1_keys;
-   const char * game_keys[e_gigk_last];
-   float volume_master;
-   float volume_music;
-   float volume_effects;
+   GameConfigData_T config;
    int raw_volume_music;
    int raw_volume_effects;
-   const char * music_background;
+   GameSettings_PlayerKeys_T player1_keys;
+   const char * game_keys[e_gigk_last];
 };
 
 
