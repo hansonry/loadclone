@@ -225,7 +225,7 @@ static void CreateLoaderFunction(GridReader_T * reader,
          default_val = NULL;
       }
 
-      if(name != NULL & default_val != NULL)
+      if(name != NULL && default_val != NULL)
       {
          switch(cmd_type)
          {
@@ -271,9 +271,7 @@ static void CreateConfigTemplate(GridReader_T * reader,
 
    int height;
    int y;
-   const char * str;
-   const char * cmd, * name, * description, * comment, *default_val, * dvq;
-   char * var_name;
+   const char * cmd, * name, * description, * comment, *default_val;
    int cmd_type;
    int is_param;
 
@@ -349,15 +347,8 @@ static void CreateConfigTemplate(GridReader_T * reader,
          {
             fprintf(file, "# %s\n", description);
          }
-         if(cmd_type == CMD_STRING)
-         {
-            dvq = "\"";
-         }
-         else
-         {
-            dvq = "";
-         }
-         fprintf(file, "%s : %s%s%s", name, dvq, default_val, dvq);
+         
+         fprintf(file, "%s : %s", name, default_val);
          fprintf(file, "\n");
 
       }
