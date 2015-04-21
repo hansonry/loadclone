@@ -417,7 +417,7 @@ int main(int argc, char * args[])
 
 
    GridReader_Destroy(&reader);
-   printf("End\n");
+   // printf("End\n"); // For testing only
    return 0;
 }
 
