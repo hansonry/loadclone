@@ -24,10 +24,9 @@ config_tool_objects  = Compile(config_tool_settings, config_tool_source)
 config_tool_exe      = Link(config_tool_settings, config_tool_path .. "config_tool", config_tool_objects)
 
 -- Set up jobs and deps for generating config data
-config_tool_path = "config_tool" .. sep .. "config_tool"
-AddJob("GameConfigData.h",    "Generating Config Data Struct", config_tool_path)
-AddJob("GameConfigData.inl",  "Generating Config Data INL Function", config_tool_path)
-AddJob("config_template.txt", "Generating Config Data Template", config_tool_path)
+AddJob("GameConfigData.h",    "Generating Config Data Struct",       config_tool_exe)
+AddJob("GameConfigData.inl",  "Generating Config Data INL Function", config_tool_exe)
+AddJob("config_template.txt", "Generating Config Data Template",     config_tool_exe)
 AddDependency("GameConfigData.h",    "config_source.txt", config_tool_exe);
 AddDependency("GameConfigData.inl",  "config_source.txt", config_tool_exe);
 AddDependency("config_template.txt", "config_source.txt", config_tool_exe);
