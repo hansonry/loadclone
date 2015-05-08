@@ -59,6 +59,7 @@ struct PlayerData_S
    float move_timer;
    float move_timeout;
    ESInbox_T * inbox_levelstartpos;
+   ESInbox_T * inbox_inputstate;
 };
 
 typedef struct GameLevelData_S GameLevelData_T;
@@ -101,11 +102,13 @@ struct GameAudioData_S
 #define EVENT_LEVELSTARTPOS      2
 #define EVENT_PLAYERONGOLD       3
 #define EVENT_GOLDAMOUNTCHANGED  4
+#define EVENT_INPUTSTATE         5
 
 typedef struct Event_InitLevel_S         Event_InitLevel_T;
 typedef struct Event_LevelStartPos_S     Event_LevelStartPos_T;
 typedef struct Event_PlayerOnGold_S      Event_PlayerOnGold_T;
 typedef struct Event_GoldAmountChanged_S Event_GoldAmountChanged_T;
+typedef struct Event_InputState_S        Event_InputState_T;
 
 struct Event_InitLevel_S
 {
@@ -132,6 +135,13 @@ struct Event_GoldAmountChanged_S
    int delta;
 };
 
+struct Event_InputState_S
+{
+   int player;
+   GameInput_PlayerKeys_T key;
+   int state;
+};
+
 static void Level_SetPlayerAtStart(Level_T * level, PlayerData_T * player);
 
 static int IsTerrainPassable(LevelTile_T * from, LevelTile_T * to);
@@ -142,7 +152,13 @@ static void FontText_UpdateGoldCount(FontText_T * gold_count_text, int gold_left
 static void CheckForExit(const SDL_Event *event, int * done);
 
 
-static void handle_input(const SDL_Event * event, int * done, int * game_input_flags, int * player_input_flags, SDL_Scancode * game_controls, SDL_Scancode * player1_controls);
+static void handle_input(const SDL_Event * event, 
+                         EventSys_T * event_sys, 
+                         int * done, 
+                         int * game_input_flags, 
+                         int * player_input_flags, 
+                         SDL_Scancode * game_controls, 
+                         SDL_Scancode * player1_controls);
 
 static void handle_update(float seconds,
                           EventSys_T * event_sys, 
@@ -194,6 +210,7 @@ int main(int args, char * argc[])
    EventSys_RegisterEventType(&event_sys, EVENT_GOLDAMOUNTCHANGED, sizeof(Event_GoldAmountChanged_T));
    EventSys_RegisterEventType(&event_sys, EVENT_INITLEVEL,         sizeof(Event_InitLevel_T));
    EventSys_RegisterEventType(&event_sys, EVENT_LEVELSTARTPOS,     sizeof(Event_LevelStartPos_T));
+   EventSys_RegisterEventType(&event_sys, EVENT_INPUTSTATE,        sizeof(Event_InputState_T));
 
    GameSettings_Load("config.txt");
    game_settings = GameSettings_Get();
@@ -210,6 +227,8 @@ int main(int args, char * argc[])
       player1_data.input_flags[i] = 0;
    }
    player1_data.inbox_levelstartpos = EventSys_CreateInbox(&event_sys, EVENT_LEVELSTARTPOS);
+   player1_data.inbox_inputstate = EventSys_CreateInbox(&event_sys, EVENT_INPUTSTATE);
+
 
    for(i = 0; i < e_gigk_last; i++)
    {
@@ -286,7 +305,13 @@ int main(int args, char * argc[])
    {
       while(SDL_PollEvent(&event))
       {
-         handle_input(&event, &done, game_input_flags, player1_data.input_flags, game_controls, player1_controls);
+         handle_input(&event, 
+                      &event_sys,
+                      &done, 
+                      game_input_flags, 
+                      player1_data.input_flags, 
+                      game_controls, 
+                      player1_controls);
       }
       
       nowTicks = SDL_GetTicks();
@@ -357,6 +382,7 @@ static void CheckForExit(const SDL_Event *event, int * done)
 
 
 static void handle_input(const SDL_Event * event, 
+                         EventSys_T * event_sys,
                          int * done, 
                          int * game_input_flags, 
                          int * player_input_flags, 
@@ -367,6 +393,7 @@ static void handle_input(const SDL_Event * event,
    int key_state;
    GameInput_PlayerKeys_T pkey;
    GameInput_GameKeys_T gkey;
+   Event_InputState_T event_inputstate;
    CheckForExit(event, done);
 
    if(event->type == SDL_KEYDOWN)
@@ -397,7 +424,10 @@ static void handle_input(const SDL_Event * event,
 
       if(pkey != e_gipk_last)
       {
-         player_input_flags[pkey] = key_state;
+         event_inputstate.key    = pkey;
+         event_inputstate.state  = key_state;
+         event_inputstate.player = 0;
+         EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
       }
 
       // Check Game Keys
@@ -414,6 +444,118 @@ static void handle_input(const SDL_Event * event,
       if(gkey != e_gigk_last)
       {
          game_input_flags[gkey] = key_state;
+
+      }
+   }
+}
+
+static void handle_update_level(float seconds,
+                                EventSys_T * event_sys,
+                                GameLevelData_T * game_level_data)
+{
+
+   Level_T * next_level;
+   Event_LevelStartPos_T     event_levelstartpos;   
+   Event_GoldAmountChanged_T event_goldamountchanged;
+   Event_InitLevel_T         * list_initlevel;
+   Event_PlayerOnGold_T      * list_playerongold;
+   size_t count, i;
+   
+   
+   list_initlevel = ESInbox_Get(game_level_data->inbox_initlevel, &count, NULL);
+   for(i = 0; i < count; i ++)
+   {
+
+      next_level = LevelSet_GetLevel(game_level_data->levelset, list_initlevel[i].level_number);
+      if(next_level != NULL)
+      {
+         game_level_data->level_index = list_initlevel[i].level_number;
+         game_level_data->level = next_level;
+         Level_Restart(game_level_data->level);
+
+         event_levelstartpos.player = 0;
+         Level_GetStartSpot(game_level_data->level,
+                            &event_levelstartpos.x,
+                            &event_levelstartpos.y);
+         EventSys_Send(event_sys, EVENT_LEVELSTARTPOS, &event_levelstartpos);
+
+         event_goldamountchanged.delta = 0;         
+         event_goldamountchanged.new_amount = Level_GetGoldCount(game_level_data->level, &event_goldamountchanged.new_max);
+         EventSys_Send(event_sys, EVENT_GOLDAMOUNTCHANGED, &event_goldamountchanged);
+      
+
+      }
+   }
+
+   list_playerongold = ESInbox_Get(game_level_data->inbox_playerongold, &count, NULL);
+   event_goldamountchanged.delta = 0;
+   for(i = 0; i < count; i++)
+   {
+      Level_RemoveGold(game_level_data->level, list_playerongold[i].gold_index);
+      event_goldamountchanged.delta --;
+   }
+   event_goldamountchanged.new_amount = Level_GetGoldCount(game_level_data->level, &event_goldamountchanged.new_max);
+   if(event_goldamountchanged.delta != 0)
+   {
+      EventSys_Send(event_sys, EVENT_GOLDAMOUNTCHANGED, &event_goldamountchanged);
+   }
+   Level_Update(game_level_data->level, seconds);
+
+}
+
+static void handle_update_player(float seconds,
+                                 EventSys_T * event_sys,
+                                 PlayerData_T * player1_data)
+{
+   Event_LevelStartPos_T * list_levelstartpos;
+   size_t count, i;
+
+   list_levelstartpos = ESInbox_Get(player1_data->inbox_levelstartpos, &count, NULL);
+   for(i = 0; i < count; i++)
+   {
+      if(list_levelstartpos[i].player == 0)
+      {
+
+         player1_data->grid_p.x = list_levelstartpos[i].x;
+         player1_data->grid_p.y = list_levelstartpos[i].y;
+         player1_data->next_grid_p.x = player1_data->grid_p.x;
+         player1_data->next_grid_p.y = player1_data->grid_p.y;
+         player1_data->player_state = PLAYER_STATE_DEATH;
+      }
+   }
+}
+
+static void handle_update_text(float seconds,
+                               EventSys_T * event_sys,
+                               GameTextData_T * game_text_data)
+{
+
+   size_t count;
+   Event_GoldAmountChanged_T * list_goldamountchanged;
+
+   list_goldamountchanged = ESInbox_Get(game_text_data->inbox_goldamountchanged, &count, NULL);
+   if(count > 0)
+   {
+      FontText_UpdateGoldCount(&game_text_data->gold_count_text,
+                               list_goldamountchanged[0].new_amount,
+                               list_goldamountchanged[0].new_max);
+   }
+
+}
+
+static void handle_update_audio(float seconds,
+                                EventSys_T * event_sys,
+                                GameAudioData_T * game_audio_data)
+{
+   size_t count;
+   Event_GoldAmountChanged_T * list_goldamountchanged;
+
+   list_goldamountchanged = ESInbox_Get(game_audio_data->inbox_goldamountchanged, &count, NULL);
+   if(count > 0)
+   {
+      if(list_goldamountchanged[0].delta < 0)
+      {
+         Mix_PlayChannel(-1, game_audio_data->pickup, 0);
       }
    }
 }
@@ -434,8 +576,8 @@ static void handle_update(float seconds,
    LevelTile_T dig_above_tile, player_below_tile;
    int all_gold_colected;
    static int restart_key_prev = 0;
-   Level_T * next_level;
    Event_PlayerOnGold_T event_playerongold;
+   Event_InputState_T * list_inputstate;
 
    // EventData
    size_t count, i;
@@ -447,6 +589,15 @@ static void handle_update(float seconds,
    Event_LevelStartPos_T event_levelstartpos;
    Event_LevelStartPos_T * list_levelstartpos;
 
+
+   list_inputstate = ESInbox_Get(player1_data->inbox_inputstate, &count, NULL);
+   for(i = 0; i < count; i++)
+   {
+      if(list_inputstate[i].player == 0)
+      {
+         player1_data->input_flags[list_inputstate[i].key] = list_inputstate[i].state;
+      }
+   }
     
    Level_QueryTile(game_level_data->level, POS_SPLIT(player1_data->grid_p, 0, 0), &player_current_tile);
    all_gold_colected = IsAllGoldColected(game_level_data->level);
@@ -676,83 +827,17 @@ static void handle_update(float seconds,
       event_initlevel.level_number = game_level_data->level_index + 1;
       EventSys_Send(event_sys, EVENT_INITLEVEL, &event_initlevel);
    }
-
+   // Level update
+   handle_update_level(seconds, event_sys, game_level_data);
   
-   // Level Update
-   list_initlevel = ESInbox_Get(game_level_data->inbox_initlevel, &count, NULL);
-   for(i = 0; i < count; i ++)
-   {
-
-      next_level = LevelSet_GetLevel(game_level_data->levelset, list_initlevel[i].level_number);
-      if(next_level != NULL)
-      {
-         game_level_data->level_index = list_initlevel[i].level_number;
-         game_level_data->level = next_level;
-         Level_Restart(game_level_data->level);
-         player1_data->player_state = PLAYER_STATE_NOT_MOVING;
-
-         event_levelstartpos.player = 0;
-         Level_GetStartSpot(game_level_data->level,
-                            &event_levelstartpos.x,
-                            &event_levelstartpos.y);
-         EventSys_Send(event_sys, EVENT_LEVELSTARTPOS, &event_levelstartpos);
-
-         event_goldamountchanged.delta = 0;         
-         event_goldamountchanged.new_amount = Level_GetGoldCount(game_level_data->level, &event_goldamountchanged.new_max);
-         EventSys_Send(event_sys, EVENT_GOLDAMOUNTCHANGED, &event_goldamountchanged);
-      
-
-      }
-   }
-
-   list_playerongold = ESInbox_Get(game_level_data->inbox_playerongold, &count, NULL);
-   event_goldamountchanged.delta = 0;
-   for(i = 0; i < count; i++)
-   {
-      Level_RemoveGold(game_level_data->level, list_playerongold[i].gold_index);
-      event_goldamountchanged.delta --;
-   }
-   event_goldamountchanged.new_amount = Level_GetGoldCount(game_level_data->level, &event_goldamountchanged.new_max);
-   if(event_goldamountchanged.delta != 0)
-   {
-      EventSys_Send(event_sys, EVENT_GOLDAMOUNTCHANGED, &event_goldamountchanged);
-   }
-   Level_Update(game_level_data->level, seconds);
-
    // Player Update
-   list_levelstartpos = ESInbox_Get(player1_data->inbox_levelstartpos, &count, NULL);
-   for(i = 0; i < count; i++)
-   {
-      if(list_levelstartpos[i].player == 0)
-      {
-
-         player1_data->grid_p.x = list_levelstartpos[i].x;
-         player1_data->grid_p.y = list_levelstartpos[i].y;
-         player1_data->next_grid_p.x = player1_data->grid_p.x;
-         player1_data->next_grid_p.y = player1_data->grid_p.y;
-         player1_data->player_state = PLAYER_STATE_DEATH;
-      }
-   }
+   handle_update_player(seconds, event_sys, player1_data);
 
    // Text Update
-   list_goldamountchanged = ESInbox_Get(game_text_data->inbox_goldamountchanged, &count, NULL);
-   if(count > 0)
-   {
-      FontText_UpdateGoldCount(&game_text_data->gold_count_text,
-                               list_goldamountchanged[0].new_amount,
-                               list_goldamountchanged[0].new_max);
-   }
-
+   handle_update_text(seconds, event_sys, game_text_data);
 
    // Audio Update
-   list_goldamountchanged = ESInbox_Get(game_audio_data->inbox_goldamountchanged, &count, NULL);
-   if(count > 0)
-   {
-      if(list_goldamountchanged[0].delta < 0)
-      {
-         Mix_PlayChannel(-1, game_audio_data->pickup, 0);
-      }
-   }
+   handle_update_audio(seconds, event_sys, game_audio_data);
 }
 
 static void handle_render(GameRenderData_T * game_render_data,
