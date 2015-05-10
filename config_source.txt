@@ -26,4 +26,4 @@ f "volume.master"               100                           "Master Volume [0 
 f "volume.music"                100                           "Music Volume [0 - 100] percent"
 f "volume.effects"              100                           "Sound Effect Volume [0 - 100] percent"
 e
-s "music.background"            "01-TimurIzhbulatov-Revz.ogg" "Music file to play in the background"
+s "music.background"            "nneeww.ogg"                  "Music file to play in the background"

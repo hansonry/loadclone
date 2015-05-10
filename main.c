@@ -578,16 +578,8 @@ static void handle_update(float seconds,
    static int restart_key_prev = 0;
    Event_PlayerOnGold_T event_playerongold;
    Event_InputState_T * list_inputstate;
-
-   // EventData
    size_t count, i;
-   Event_PlayerOnGold_T * list_playerongold;
-   Event_GoldAmountChanged_T * list_goldamountchanged;
-   Event_GoldAmountChanged_T event_goldamountchanged;
-   Event_InitLevel_T * list_initlevel;
    Event_InitLevel_T event_initlevel;
-   Event_LevelStartPos_T event_levelstartpos;
-   Event_LevelStartPos_T * list_levelstartpos;
 
 
    list_inputstate = ESInbox_Get(player1_data->inbox_inputstate, &count, NULL);
