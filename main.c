@@ -203,7 +203,9 @@ int main(int args, char * argc[])
    EventSys_T event_sys;
    Event_InitLevel_T event_initlevel;
    
-   
+   // Controller 
+   SDL_GameController * game_ctrl;
+
 
    EventSys_Init(&event_sys);
    EventSys_RegisterEventType(&event_sys, EVENT_PLAYERONGOLD,      sizeof(Event_PlayerOnGold_T));
@@ -295,12 +297,15 @@ int main(int args, char * argc[])
    EventSys_Send(&event_sys, EVENT_INITLEVEL, &event_initlevel);
 
 
+   printf("Joy Name: %s\n", SDL_GameControllerNameForIndex(0));
+   game_ctrl = SDL_GameControllerOpen(0);
 
-
-   prevTicks = SDL_GetTicks();
    Mix_FadeInMusic(game_audio_data.music, -1, 1000);
    Mix_VolumeMusic(game_settings->raw_volume_music);
+   
+
    done = 0;
+   prevTicks = SDL_GetTicks();
    while(done == 0)
    {
       while(SDL_PollEvent(&event))
@@ -354,7 +359,8 @@ int main(int args, char * argc[])
    Mix_Quit();
    FontText_Destroy(&game_text_data.gold_count_text);
    TTF_CloseFont(game_text_data.font);
-
+   
+   SDL_GameControllerClose(game_ctrl);
    SDL_DestroyRenderer(game_render_data.rend);
    SDL_DestroyWindow(window);
    SDL_Quit();
@@ -380,7 +386,7 @@ static void CheckForExit(const SDL_Event *event, int * done)
 
 }
 
-
+#define CTRL_DEADZONE 8000
 static void handle_input(const SDL_Event * event, 
                          EventSys_T * event_sys,
                          int * done, 
@@ -391,9 +397,16 @@ static void handle_input(const SDL_Event * event,
 {
    size_t i;
    int key_state;
+   int joy_state;
    GameInput_PlayerKeys_T pkey;
    GameInput_GameKeys_T gkey;
    Event_InputState_T event_inputstate;
+
+   static int prev_ctrl_up    = 0;
+   static int prev_ctrl_down  = 0;
+   static int prev_ctrl_left  = 0;
+   static int prev_ctrl_right = 0;
+
    CheckForExit(event, done);
 
    if(event->type == SDL_KEYDOWN)
@@ -407,6 +420,19 @@ static void handle_input(const SDL_Event * event,
    else
    {
       key_state = 3;
+   }
+
+   if(event->type == SDL_CONTROLLERBUTTONDOWN)
+   {
+      joy_state = 1;
+   }
+   else if(event->type == SDL_CONTROLLERBUTTONUP)
+   {
+      joy_state = 0;
+   }
+   else
+   {
+      joy_state = 3;
    }
 
    if(key_state < 3)
@@ -445,6 +471,111 @@ static void handle_input(const SDL_Event * event,
       {
          game_input_flags[gkey] = key_state;
 
+      }
+   }
+   else if(event->type == SDL_CONTROLLERAXISMOTION && event->caxis.which == 0)
+   {
+      if(event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTX)
+      {
+         //printf("Joy X %i\n", event->caxis.value);
+         if(prev_ctrl_right == 0 && event->caxis.value > CTRL_DEADZONE)
+         {
+            prev_ctrl_right = 1;
+            
+            event_inputstate.key    = e_gipk_move_right;
+            event_inputstate.state  = 1;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+            //printf("Right\n");
+         }
+         else if(prev_ctrl_right == 1 && event->caxis.value < CTRL_DEADZONE)
+         {
+            prev_ctrl_right = 0;
+            
+            event_inputstate.key    = e_gipk_move_right;
+            event_inputstate.state  = 0;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+         }
+         else if(prev_ctrl_left == 0 && event->caxis.value < -CTRL_DEADZONE)
+         {
+            prev_ctrl_left = 1;
+            
+            event_inputstate.key    = e_gipk_move_left;
+            event_inputstate.state  = 1;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+            //printf("Left\n");
+         }
+         else if(prev_ctrl_left == 1 && event->caxis.value > -CTRL_DEADZONE)
+         {
+            prev_ctrl_left = 0;
+            
+            event_inputstate.key    = e_gipk_move_left;
+            event_inputstate.state  = 0;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+         }
+      }
+      else if(event->caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
+      {
+         //printf("Joy Y %i\n", event->caxis.value);
+         if(prev_ctrl_down == 0 && event->caxis.value > CTRL_DEADZONE)
+         {
+            prev_ctrl_down = 1;
+            
+            event_inputstate.key    = e_gipk_move_down;
+            event_inputstate.state  = 1;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+            //printf("Down\n");
+         }
+         else if(prev_ctrl_down == 1 && event->caxis.value < CTRL_DEADZONE)
+         {
+            prev_ctrl_down = 0;
+            
+            event_inputstate.key    = e_gipk_move_down;
+            event_inputstate.state  = 0;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+         }
+         else if(prev_ctrl_up == 0 && event->caxis.value < -CTRL_DEADZONE)
+         {
+            prev_ctrl_up = 1;
+            
+            event_inputstate.key    = e_gipk_move_up;
+            event_inputstate.state  = 1;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+            //printf("Up\n");
+         }
+         else if(prev_ctrl_up == 1 && event->caxis.value > -CTRL_DEADZONE)
+         {
+            prev_ctrl_up = 0;
+            
+            event_inputstate.key    = e_gipk_move_up;
+            event_inputstate.state  = 0;
+            event_inputstate.player = 0;
+            EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+         }
+      }
+
+   }
+   else if(joy_state < 3 && event->cbutton.which == 0)
+   {
+      if(event->cbutton.button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER)
+      {
+         event_inputstate.key    = e_gipk_dig_left;
+         event_inputstate.state  = joy_state;
+         event_inputstate.player = 0;
+         EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
+      }
+      else if(event->cbutton.button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER)
+      {
+         event_inputstate.key    = e_gipk_dig_right;
+         event_inputstate.state  = joy_state;
+         event_inputstate.player = 0;
+         EventSys_Send(event_sys, EVENT_INPUTSTATE, &event_inputstate);
       }
    }
 }
