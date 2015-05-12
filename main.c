@@ -257,6 +257,7 @@ int main(int args, char * argc[])
    Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
 
    game_audio_data.music = Mix_LoadMUS(game_settings->config.music_background);
+   printf("Loading Background Music: %s\n", game_settings->config.music_background);
    game_audio_data.pickup = Mix_LoadWAV("pickup.wav");
    game_audio_data.inbox_goldamountchanged = EventSys_CreateInbox(&event_sys, EVENT_GOLDAMOUNTCHANGED);
    //printf("pickup %p %s\n", pickup, Mix_GetError());
@@ -297,8 +298,17 @@ int main(int args, char * argc[])
    EventSys_Send(&event_sys, EVENT_INITLEVEL, &event_initlevel);
 
 
-   printf("Joy Name: %s\n", SDL_GameControllerNameForIndex(0));
-   game_ctrl = SDL_GameControllerOpen(0);
+
+   if(SDL_NumJoysticks() >= 1 && SDL_IsGameController(0))
+   {
+      printf("Game Controller Name: %s\n", SDL_GameControllerNameForIndex(0));
+      game_ctrl = SDL_GameControllerOpen(0);
+   }
+   else
+   {
+      printf("No Game Controller Found\n");
+      game_ctrl = NULL;
+   }
 
    Mix_FadeInMusic(game_audio_data.music, -1, 1000);
    Mix_VolumeMusic(game_settings->raw_volume_music);
@@ -360,7 +370,10 @@ int main(int args, char * argc[])
    FontText_Destroy(&game_text_data.gold_count_text);
    TTF_CloseFont(game_text_data.font);
    
-   SDL_GameControllerClose(game_ctrl);
+   if(game_ctrl != NULL)
+   {
+      SDL_GameControllerClose(game_ctrl);
+   }
    SDL_DestroyRenderer(game_render_data.rend);
    SDL_DestroyWindow(window);
    SDL_Quit();
